@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Office Toolkit"
+description = "A fast, privacy-first suite of free office productivity tools for professionals, freelancers, small businesses, and job seekers: e-signatures, invoices, and resume formatting."
+version = "1.0.0"
+id = "artifacts/office-toolkit"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23504
+
+[services.development]
+run = "pnpm --filter @workspace/office-toolkit run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/office-toolkit", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/office-toolkit/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23504"
+BASE_PATH = "/"

@@ -1,0 +1,269 @@
+import { type PointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ErrorBoundary } from '@/components/error-boundary';
+import { Toaster } from '@/components/ui/toaster';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import NotFound from '@/pages/not-found';
+import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import {
+  ArrowRight, BriefcaseBusiness, Check, ChevronDown, CircleHelp, Download, FileJson, FileText,
+  Grid2X2, Hand, Laptop, LayoutTemplate, Menu, PenLine, Plus, ReceiptText,
+  RotateCcw, ShieldCheck, Sparkles, Trash2, Upload, X, Zap,
+} from 'lucide-react';
+
+const queryClient = new QueryClient();
+
+type ToolId = 'signature' | 'invoice' | 'resume';
+const toolMeta: Record<ToolId, { title: string; eyebrow: string; description: string; path: string; icon: typeof PenLine; tint: string }> = {
+  signature: { title: 'E-signature maker', eyebrow: 'Sign it, send it, done', description: 'Draw or type a clean signature, then download it as a transparent PNG.', path: '/e-signature-maker', icon: PenLine, tint: 'bg-[hsl(var(--secondary))]' },
+  invoice: { title: 'Invoice generator', eyebrow: 'Get paid without the fuss', description: 'Build a polished invoice with line items, tax, and your own logo. Everything stays in your browser.', path: '/invoice-generator', icon: ReceiptText, tint: 'bg-[hsl(var(--accent)/.22)]' },
+  resume: { title: 'Resume formatter', eyebrow: 'Make your experience legible', description: 'Turn a rough text dump into a tidy, ATS-friendly resume you can export and share.', path: '/resume-formatter', icon: FileText, tint: 'bg-[hsl(var(--secondary)/.7)]' },
+};
+
+function setPageMeta(title: string, description: string) {
+  document.title = `${title} — Office Toolkit`;
+  const ensure = (selector: string, attr: string, value: string) => {
+    let el = document.querySelector(selector);
+    if (!el) {
+      el = document.createElement('meta');
+      el.setAttribute(attr, selector.includes('property') ? selector.match(/"([^"]+)"/)?.[1] ?? '' : selector.match(/"([^"]+)"/)?.[1] ?? '');
+      document.head.appendChild(el);
+    }
+    el.setAttribute('content', value);
+  };
+  ensure('meta[name="description"]', 'name', description);
+  ensure('meta[property="og:title"]', 'property', `${title} — Office Toolkit`);
+  ensure('meta[property="og:description"]', 'property', description);
+  ensure('meta[name="twitter:title"]', 'name', `${title} — Office Toolkit`);
+  ensure('meta[name="twitter:description"]', 'name', description);
+}
+
+function PageMeta({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  useEffect(() => { setPageMeta(title, description); window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }); }, [title, description]);
+  return <div className="page-in">{children}</div>;
+}
+
+function Logo() {
+  return (
+    <Link href="/" className="flex items-center gap-2.5 group" data-testid="link-logo">
+      <span className="relative grid size-9 place-items-center rounded-[11px] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-[3px_3px_0_hsl(var(--accent))] transition-transform group-hover:rotate-[-5deg]">
+        <Grid2X2 size={17} strokeWidth={2.6} />
+      </span>
+      <span className="font-display text-[1.05rem] font-bold tracking-[-.035em]">Office Toolkit</span>
+    </Link>
+  );
+}
+
+function Header() {
+  const [location] = useLocation();
+  const [open, setOpen] = useState(false);
+  const links = [
+    { href: '/e-signature-maker', label: 'E-signature' },
+    { href: '/invoice-generator', label: 'Invoices' },
+    { href: '/resume-formatter', label: 'Resumes' },
+    { href: '/about', label: 'About' },
+  ];
+  return (
+    <header className="no-print sticky top-0 z-40 border-b border-[hsl(var(--border)/.7)] bg-[hsl(var(--background)/.91)] backdrop-blur-xl">
+      <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-5 lg:px-8">
+        <Logo />
+        <nav className="hidden items-center gap-1 md:flex" aria-label="Main navigation">
+          {links.map((link) => (
+            <Link key={link.href} href={link.href} data-testid={`link-nav-${link.label.toLowerCase().replaceAll(' ', '-')}`} className={`rounded-full px-3.5 py-2 text-sm font-medium transition-colors hover:bg-[hsl(var(--muted))] ${location === link.href ? 'bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`}>
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+        <button type="button" onClick={() => setOpen(!open)} className="btn-press rounded-lg p-2 md:hidden" aria-label="Toggle navigation" data-testid="button-toggle-navigation">
+          {open ? <X size={22} /> : <Menu size={22} />}
+        </button>
+      </div>
+      {open && (
+        <nav className="border-t border-[hsl(var(--border)/.7)] px-5 py-3 md:hidden" aria-label="Mobile navigation">
+          {links.map((link) => <Link onClick={() => setOpen(false)} key={link.href} href={link.href} className="block rounded-xl px-3 py-3 text-sm font-semibold hover:bg-[hsl(var(--muted))]" data-testid={`link-mobile-${link.label.toLowerCase().replaceAll(' ', '-')}`}>{link.label}</Link>)}
+        </nav>
+      )}
+    </header>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="no-print border-t border-[hsl(var(--border))] bg-[hsl(var(--card)/.55)]">
+      <div className="mx-auto flex max-w-6xl flex-col gap-7 px-5 py-10 md:flex-row md:items-end md:justify-between lg:px-8">
+        <div><Logo /><p className="mt-3 max-w-xs text-sm leading-6 text-[hsl(var(--muted-foreground))]">A small, private toolkit for the work hiding between meetings.</p></div>
+        <div className="flex flex-wrap gap-x-5 gap-y-3 text-sm font-medium text-[hsl(var(--muted-foreground))]">
+          <Link href="/e-signature-maker" data-testid="link-footer-signature">E-signature</Link>
+          <Link href="/invoice-generator" data-testid="link-footer-invoice">Invoices</Link>
+          <Link href="/resume-formatter" data-testid="link-footer-resume">Resumes</Link>
+          <Link href="/about" data-testid="link-footer-about">About</Link>
+        </div>
+        <p className="font-mono-ui text-[10px] uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]">No account · No uploads · No noise</p>
+      </div>
+    </footer>
+  );
+}
+
+function Shell({ children }: { children: ReactNode }) {
+  return <div className="app-noise min-h-[100dvh]"><Header />{children}<Footer /></div>;
+}
+
+function Button({ children, onClick, variant = 'primary', type = 'button', className = '', disabled = false, testId }: { children: ReactNode; onClick?: () => void; variant?: 'primary' | 'quiet' | 'outline' | 'accent'; type?: 'button' | 'submit'; className?: string; disabled?: boolean; testId?: string }) {
+  const styles = {
+    primary: 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:brightness-110',
+    quiet: 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]',
+    outline: 'border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--foreground))] hover:border-[hsl(var(--primary)/.5)] hover:bg-[hsl(var(--secondary)/.45)]',
+    accent: 'bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] hover:brightness-105',
+  };
+  return <button type={type} onClick={onClick} disabled={disabled} data-testid={testId} className={`btn-press inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold shadow-[0_2px_0_hsl(var(--shadow-color)/.12)] disabled:cursor-not-allowed disabled:opacity-50 ${styles[variant]} ${className}`}>{children}</button>;
+}
+
+function SectionHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) {
+  return <div className="max-w-2xl"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">{eyebrow}</p><h2 className="mt-3 font-display text-3xl font-bold leading-[1.05] tracking-[-.045em] md:text-4xl">{title}</h2>{description && <p className="mt-4 text-base leading-7 text-[hsl(var(--muted-foreground))]">{description}</p>}</div>;
+}
+
+function ToolCard({ id, number }: { id: ToolId; number: string }) {
+  const tool = toolMeta[id];
+  const Icon = tool.icon;
+  return <Link href={tool.path} data-testid={`card-tool-${id}`} className={`tool-card group relative overflow-hidden rounded-[1.35rem] border border-[hsl(var(--border))] ${tool.tint} p-6 md:p-7`}>
+    <div className="flex items-start justify-between"><span className="font-mono-ui text-[11px] font-bold text-[hsl(var(--muted-foreground))]">{number}</span><span className="grid size-10 place-items-center rounded-full bg-[hsl(var(--card)/.72)] text-[hsl(var(--primary))]"><Icon size={19} /></span></div>
+    <h3 className="mt-14 font-display text-2xl font-bold tracking-[-.035em]">{tool.title}</h3><p className="mt-2 max-w-[17rem] text-sm leading-6 text-[hsl(var(--muted-foreground))]">{tool.description}</p>
+    <span className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-[hsl(var(--primary))]">Open tool <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" /></span>
+    <span className="pointer-events-none absolute -bottom-10 -right-8 size-28 rounded-full border-[14px] border-[hsl(var(--card)/.32)]" />
+  </Link>;
+}
+
+function Home() {
+  return <PageMeta title="Small tools. Clear head." description="Office Toolkit is a private, browser-first suite for signatures, invoices, and resumes.">
+    <main>
+      <section className="relative overflow-hidden border-b border-[hsl(var(--border))]">
+        <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 pb-20 pt-16 lg:grid-cols-[1.05fr_.95fr] lg:px-8 lg:pb-28 lg:pt-24">
+          <div className="relative z-10">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[hsl(var(--primary)/.2)] bg-[hsl(var(--secondary)/.5)] px-3 py-1.5 font-mono-ui text-[10px] font-bold uppercase tracking-[.13em] text-[hsl(var(--primary))]"><span className="size-1.5 rounded-full bg-[hsl(var(--accent))]" /> A calmer workday starts here</div>
+            <h1 className="max-w-2xl font-display text-[3.65rem] font-bold leading-[.94] tracking-[-.065em] sm:text-6xl lg:text-[5.7rem]">Small tools.<br /><span className="text-[hsl(var(--primary))]">Clear head.</span></h1>
+            <p className="mt-7 max-w-lg text-lg leading-8 text-[hsl(var(--muted-foreground))]">The useful little things your workday needs — without logins, data harvesting, or a twelve-step tour.</p>
+            <div className="mt-8 flex flex-wrap items-center gap-3"><Link href="/e-signature-maker" data-testid="link-home-start" className="btn-press inline-flex min-h-11 items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 text-sm font-bold text-[hsl(var(--primary-foreground))] shadow-[0_3px_0_hsl(var(--shadow-color)/.16)]">Start with a signature <ArrowRight size={17} /></Link><a href="#tools" data-testid="link-home-tools" className="inline-flex min-h-11 items-center px-3 text-sm font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">See all tools</a></div>
+            <div className="mt-12 flex flex-wrap gap-x-6 gap-y-3 text-xs font-medium text-[hsl(var(--muted-foreground))]"><span className="flex items-center gap-2"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Private by default</span><span className="flex items-center gap-2"><Zap size={15} className="text-[hsl(var(--accent-foreground))]" /> Instant in your browser</span></div>
+          </div>
+          <div className="relative min-h-[330px] lg:min-h-[430px]">
+            <div className="absolute right-0 top-3 h-[330px] w-[88%] rotate-[5deg] rounded-[2rem] bg-[hsl(var(--accent))] opacity-80 lg:h-[405px]" />
+            <div className="paper-shadow absolute right-[5%] top-0 h-[330px] w-[88%] rounded-[2rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 lg:h-[405px] lg:p-8">
+              <div className="flex items-center justify-between border-b border-[hsl(var(--border))] pb-5"><div className="flex gap-1.5"><i className="size-2.5 rounded-full bg-[hsl(var(--accent))]" /><i className="size-2.5 rounded-full bg-[hsl(var(--secondary))]" /><i className="size-2.5 rounded-full bg-[hsl(var(--primary)/.35)]" /></div><span className="font-mono-ui text-[9px] uppercase tracking-[.18em] text-[hsl(var(--muted-foreground))]">Your workbench</span></div>
+              <div className="mt-8 space-y-4"><div className="flex items-end justify-between"><div><div className="h-3 w-24 rounded-full bg-[hsl(var(--primary))]" /><div className="mt-3 h-2 w-36 rounded-full bg-[hsl(var(--muted))]" /></div><div className="grid size-12 place-items-center rounded-2xl bg-[hsl(var(--secondary))]"><Check size={20} className="text-[hsl(var(--primary))]" /></div></div><div className="grid grid-cols-2 gap-3 pt-4"><div className="h-20 rounded-2xl bg-[hsl(var(--secondary)/.55)] p-4"><div className="h-2 w-12 rounded-full bg-[hsl(var(--primary)/.45)]" /><div className="mt-4 h-2 w-20 rounded-full bg-[hsl(var(--muted))]" /></div><div className="h-20 rounded-2xl border border-dashed border-[hsl(var(--primary)/.4)] p-4"><div className="h-2 w-12 rounded-full bg-[hsl(var(--accent))]" /><div className="mt-4 h-2 w-16 rounded-full bg-[hsl(var(--muted))]" /></div></div><div className="mt-4 h-16 rounded-2xl bg-[hsl(var(--primary))] p-4"><div className="flex justify-between"><div className="h-2 w-20 rounded-full bg-[hsl(var(--primary-foreground)/.5)]" /><div className="h-2 w-10 rounded-full bg-[hsl(var(--accent))]" /></div><div className="mt-3 h-2 w-32 rounded-full bg-[hsl(var(--primary-foreground)/.25)]" /></div></div>
+            </div>
+            <span className="absolute bottom-1 left-0 grid size-16 -rotate-12 place-items-center rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-lg"><PenLine size={26} /></span>
+          </div>
+        </div>
+      </section>
+      <section id="tools" className="mx-auto max-w-6xl px-5 py-20 lg:px-8 lg:py-28">
+        <SectionHeading eyebrow="Three things, done well" title="Keep the tab. Lose the busywork." description="Built for the in-between moments: a client needs an invoice, HR needs a PDF, a document needs your name on it." />
+        <div className="mt-10 grid gap-4 md:grid-cols-3"><ToolCard id="signature" number="01 / SIGN" /><ToolCard id="invoice" number="02 / BILL" /><ToolCard id="resume" number="03 / SHOW" /></div>
+      </section>
+      <section className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
+        <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 lg:grid-cols-[.9fr_1.1fr] lg:px-8 lg:py-20"><div><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--accent))]">The quiet promise</p><h2 className="mt-4 max-w-md font-display text-4xl font-bold leading-[1] tracking-[-.05em]">Your work stays yours.</h2></div><div className="grid gap-7 sm:grid-cols-3">{[['01', 'No account', 'Open a tool and get to work. There is no profile to create or password to forget.'], ['02', 'Local first', 'Your files and drafts live in this browser. We do not route them through a server.'], ['03', 'Useful output', 'Export a polished file that works outside this tab — PNG, PDF, or JSON.']].map(([n, h, p]) => <div key={n} className="border-l border-[hsl(var(--primary-foreground)/.22)] pl-4"><span className="font-mono-ui text-[10px] text-[hsl(var(--accent))]">{n}</span><h3 className="mt-4 font-display text-xl font-bold">{h}</h3><p className="mt-2 text-sm leading-6 text-[hsl(var(--primary-foreground)/.7)]">{p}</p></div>)}</div></div>
+      </section>
+      <section className="mx-auto max-w-6xl px-5 py-20 lg:px-8"><div className="grid gap-10 lg:grid-cols-[.7fr_1.3fr]"><SectionHeading eyebrow="Made for real life" title="A little less admin. A little more done." /><div className="grid gap-4 sm:grid-cols-2"><div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><BriefcaseBusiness className="text-[hsl(var(--primary))]" /><h3 className="mt-6 font-display text-xl font-bold">For the one-person office</h3><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">The freelancer, the operator, the person who is both HR and accounts receivable.</p></div><div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><Laptop className="text-[hsl(var(--primary))]" /><h3 className="mt-6 font-display text-xl font-bold">For the workday in motion</h3><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Use it from a borrowed laptop, a kitchen table, or the last ten minutes before a call.</p></div></div></div></section>
+    </main>
+  </PageMeta>;
+}
+
+function ToolIntro({ id, children }: { id: ToolId; children?: ReactNode }) {
+  const tool = toolMeta[id];
+  const Icon = tool.icon;
+  return <div className="mx-auto max-w-6xl px-5 pb-8 pt-12 lg:px-8 lg:pt-16"><div className="flex items-center gap-3 text-[hsl(var(--primary))]"><span className="grid size-10 place-items-center rounded-xl bg-[hsl(var(--secondary))]"><Icon size={19} /></span><span className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em]">{tool.eyebrow}</span></div><div className="mt-5 flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><h1 className="font-display text-4xl font-bold tracking-[-.055em] md:text-6xl">{tool.title}</h1><p className="mt-4 max-w-xl text-base leading-7 text-[hsl(var(--muted-foreground))]">{tool.description}</p></div>{children}</div></div>;
+}
+
+function Field({ label, value, onChange, placeholder, type = 'text', testId, className = '' }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; testId: string; className?: string }) {
+  return <label className={`block ${className}`}><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">{label}</span><input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} data-testid={testId} className="h-10 w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm outline-none transition-shadow placeholder:text-[hsl(var(--muted-foreground)/.65)] focus:ring-2 focus:ring-[hsl(var(--ring)/.25)]" /></label>;
+}
+
+function FAQ({ items }: { items: [string, string][] }) {
+  const [active, setActive] = useState<number | null>(null);
+  return <div className="divide-y divide-[hsl(var(--border))] border-y border-[hsl(var(--border))]">{items.map(([q, a], i) => <div key={q}><button type="button" onClick={() => setActive(active === i ? null : i)} className="flex w-full items-center justify-between gap-4 py-5 text-left text-sm font-bold" data-testid={`button-faq-${i}`}><span>{q}</span><ChevronDown size={17} className={`shrink-0 text-[hsl(var(--primary))] transition-transform ${active === i ? 'rotate-180' : ''}`} /></button>{active === i && <p className="faq-answer max-w-2xl pb-5 pr-8 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{a}</p>}</div>)}</div>;
+}
+
+function downloadBlob(blob: Blob, filename: string) { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(url), 500); }
+function downloadText(text: string, filename: string, type = 'text/plain') { downloadBlob(new Blob([text], { type }), filename); }
+
+function createTextPdf(title: string, lines: string[]) {
+  const safe = (s: string) => s.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+  const visible = [title, '', ...lines].flatMap((line) => line.length > 96 ? [line.slice(0, 96), line.slice(96)] : [line]).slice(0, 46);
+  const content = ['BT', '/F1 18 Tf', '50 742 Td', `(${safe(visible[0])}) Tj`, '/F1 10 Tf', ...visible.slice(1).map((line) => `0 -16 Td (${safe(line)}) Tj`), 'ET'].join('\n');
+  const objects = [`1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj`, `2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj`, `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj`, `4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj`, `5 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj`];
+  let pdf = '%PDF-1.4\n'; const offsets = [0]; objects.forEach((obj) => { offsets.push(pdf.length); pdf += `${obj}\n`; }); const xref = pdf.length; pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`; offsets.slice(1).forEach((o) => { pdf += `${String(o).padStart(10, '0')} 00000 n \n`; }); pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`; return new Blob([pdf], { type: 'application/pdf' });
+}
+
+function SignatureCanvas({ color }: { color: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const last = useRef({ x: 0, y: 0 });
+  const clear = () => { const canvas = canvasRef.current; if (canvas) canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height); };
+  const point = (e: PointerEvent<HTMLCanvasElement>) => { const canvas = canvasRef.current!; const rect = canvas.getBoundingClientRect(); return { x: (e.clientX - rect.left) * canvas.width / rect.width, y: (e.clientY - rect.top) * canvas.height / rect.height }; };
+  const down = (e: PointerEvent<HTMLCanvasElement>) => { drawing.current = true; last.current = point(e); canvasRef.current?.setPointerCapture(e.pointerId); };
+  const move = (e: PointerEvent<HTMLCanvasElement>) => { if (!drawing.current) return; const canvas = canvasRef.current!; const ctx = canvas.getContext('2d')!; const p = point(e); ctx.strokeStyle = color; ctx.lineWidth = 3.1; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(last.current.x, last.current.y); ctx.lineTo(p.x, p.y); ctx.stroke(); last.current = p; };
+  const up = () => { drawing.current = false; };
+  const save = () => { canvasRef.current?.toBlob((blob) => blob && downloadBlob(blob, 'office-signature.png'), 'image/png'); };
+  return <div><div className="grid-paper relative overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]"><canvas ref={canvasRef} width={900} height={340} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={up} className="signature-canvas block h-[245px] w-full md:h-[315px]" data-testid="canvas-signature" /><span className="pointer-events-none absolute bottom-9 left-8 right-8 border-b border-[hsl(var(--primary)/.3)]" /><span className="pointer-events-none absolute bottom-3 left-8 font-mono-ui text-[9px] uppercase tracking-[.13em] text-[hsl(var(--muted-foreground))]">Sign above</span></div><div className="mt-3 flex flex-wrap justify-between gap-2"><Button variant="quiet" onClick={clear} testId="button-clear-signature"><RotateCcw size={15} /> Clear</Button><Button variant="primary" onClick={save} testId="button-download-signature"><Download size={15} /> Download transparent PNG</Button></div></div>;
+}
+
+function ESignatureMaker() {
+  const [mode, setMode] = useState<'draw' | 'type'>('draw');
+  const [color, setColor] = useState('#174f4a');
+  const [name, setName] = useState('Alex Morgan');
+  const fonts = ['font-display', 'font-serif', 'font-mono-ui'];
+  const [font, setFont] = useState(fonts[0]);
+  return <PageMeta title="E-signature maker" description="Draw or type a free digital signature and download a transparent PNG. Private and instant in your browser."><main><ToolIntro id="signature"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Nothing leaves your browser</span></ToolIntro><div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[1.2fr_.8fr] lg:px-8"><section className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 shadow-sm md:p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div className="flex rounded-xl bg-[hsl(var(--muted))] p-1"><button type="button" onClick={() => setMode('draw')} className={`rounded-lg px-3 py-2 text-xs font-bold ${mode === 'draw' ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid="button-signature-mode-draw"><Hand size={14} className="mr-1.5 inline" /> Draw</button><button type="button" onClick={() => setMode('type')} className={`rounded-lg px-3 py-2 text-xs font-bold ${mode === 'type' ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid="button-signature-mode-type"><FileText size={14} className="mr-1.5 inline" /> Type</button></div><label className="flex items-center gap-2 text-xs font-bold text-[hsl(var(--muted-foreground))]">Ink <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="size-8 cursor-pointer rounded-lg border-0 bg-transparent p-0" data-testid="input-signature-color" /></label></div>{mode === 'draw' ? <SignatureCanvas color={color} /> : <div><div className="flex min-h-[245px] items-center justify-center rounded-2xl border border-dashed border-[hsl(var(--primary)/.35)] bg-[hsl(var(--background))] px-4 md:min-h-[315px]"><span style={{ color }} className={`${font} text-center text-5xl font-bold tracking-[-.06em] md:text-7xl`} data-testid="text-signature-preview">{name || 'Your name'}</span></div><div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]"><Field label="Your name" value={name} onChange={setName} placeholder="Type your name" testId="input-signature-name" /><div><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Style</span><div className="flex gap-2">{fonts.map((f, i) => <button type="button" key={f} onClick={() => setFont(f)} className={`grid size-10 place-items-center rounded-lg border text-lg ${font === f ? 'border-[hsl(var(--primary))] bg-[hsl(var(--secondary))]' : 'border-[hsl(var(--border))]'}`} data-testid={`button-signature-font-${i}`}>A</button>)}</div></div></div><Button onClick={() => { const c = document.createElement('canvas'); c.width = 1200; c.height = 420; const ctx = c.getContext('2d')!; ctx.fillStyle = color; ctx.font = 'bold 120px Georgia'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(name || 'Your name', 600, 210); c.toBlob((b) => b && downloadBlob(b, 'office-signature.png'), 'image/png'); }} className="mt-4 w-full sm:w-auto" testId="button-download-typed-signature"><Download size={15} /> Download transparent PNG</Button></div>}</section><aside className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--secondary)/.32)] p-6"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--primary))]">Good to know</p><h2 className="mt-3 font-display text-2xl font-bold tracking-[-.035em]">A signature that travels well</h2><div className="mt-6 space-y-5">{[['Transparent by default', 'Drop your PNG onto a PDF, contract, or email without a white box around it.'], ['Yours in a moment', 'Use a stylus, mouse, trackpad, or type a name. The result is yours to keep.'], ['No secret handshake', 'There is no account and no upload. The canvas exists only on this page.']].map(([h, p]) => <div key={h} className="flex gap-3"><span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"><Check size={14} /></span><div><h3 className="text-sm font-bold">{h}</h3><p className="mt-1 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{p}</p></div></div>)}</div></aside></div><InfoSection title="Digital signatures, without the ceremony" intro="A signature image is useful when you need to approve a document quickly, add a sign-off to a proposal, or make a form feel finished. Office Toolkit keeps that small job small." bullets={['Use a dark ink color for the clearest result on light documents.', 'Leave generous space around a drawn signature so it stays legible when resized.', 'A PNG with transparency works over colored paper, scanned forms, and email templates.']} faq={[['Is my signature uploaded?', 'No. The drawing canvas and typed preview run locally in your browser. The PNG is created on your device.'], ['Can I use the signature on a contract?', 'This tool creates an image of your signature. Whether that image meets a particular legal or company requirement depends on the document and jurisdiction.'], ['Why is my download transparent?', 'Transparency lets the signature sit naturally on top of a document. There is no white rectangle to crop out.']]} /></main></PageMeta>;
+}
+
+type LineItem = { id: number; description: string; qty: string; rate: string };
+function InvoiceGenerator() {
+  const [business, setBusiness] = useState('North Star Studio');
+  const [client, setClient] = useState('Harbor & Pine');
+  const [email, setEmail] = useState('hello@northstar.studio');
+  const [number, setNumber] = useState('INV-2025-014');
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [due, setDue] = useState('2025-06-30');
+  const [tax, setTax] = useState('8.25');
+  const [notes, setNotes] = useState('Thank you for working together.');
+  const [template, setTemplate] = useState<'signal' | 'ledger' | 'plain'>('signal');
+  const [logo, setLogo] = useState('');
+  const [items, setItems] = useState<LineItem[]>([{ id: 1, description: 'Brand strategy sprint', qty: '1', rate: '1250' }, { id: 2, description: 'Design system handoff', qty: '4', rate: '180' }]);
+  const subtotal = useMemo(() => items.reduce((sum, x) => sum + Number(x.qty || 0) * Number(x.rate || 0), 0), [items]);
+  const taxAmount = subtotal * Number(tax || 0) / 100;
+  const total = subtotal + taxAmount;
+  const updateItem = (id: number, key: keyof LineItem, value: string) => setItems(items.map((item) => item.id === id ? { ...item, [key]: value } : item));
+  const addItem = () => setItems([...items, { id: Date.now(), description: '', qty: '1', rate: '0' }]);
+  const exportPdf = () => downloadBlob(createTextPdf(`INVOICE ${number}`, [business, `Bill to: ${client}`, `Email: ${email}`, `Date: ${date}   Due: ${due}`, '', ...items.map((x) => `${x.description || 'Line item'} — ${x.qty} × $${Number(x.rate || 0).toFixed(2)}`), '', `Subtotal: $${subtotal.toFixed(2)}`, `Tax (${tax}%): $${taxAmount.toFixed(2)}`, `Total due: $${total.toFixed(2)}`, '', notes]), `${number || 'invoice'}.pdf`);
+  const uploadLogo = (file?: File) => { if (!file) return; const reader = new FileReader(); reader.onload = () => setLogo(String(reader.result)); reader.readAsDataURL(file); };
+  return <PageMeta title="Invoice generator" description="Create a polished invoice with line items, tax, logo upload, live preview, and PDF export. Everything stays local."><main><ToolIntro id="invoice"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Local-only draft</span></ToolIntro><div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[.93fr_1.07fr] lg:px-8"><section className="space-y-5"><div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><div className="mb-5 flex items-center justify-between"><h2 className="font-display text-xl font-bold">Invoice details</h2><span className="font-mono-ui text-[10px] text-[hsl(var(--muted-foreground))]">01 / 03</span></div><div className="grid gap-4 sm:grid-cols-2"><Field label="From" value={business} onChange={setBusiness} testId="input-invoice-business" /><Field label="Bill to" value={client} onChange={setClient} testId="input-invoice-client" /><Field label="Client email" value={email} onChange={setEmail} type="email" testId="input-invoice-email" /><Field label="Invoice number" value={number} onChange={setNumber} testId="input-invoice-number" /><Field label="Issue date" value={date} onChange={setDate} type="date" testId="input-invoice-date" /><Field label="Due date" value={due} onChange={setDue} type="date" testId="input-invoice-due" /></div><div className="mt-5 flex flex-wrap items-center gap-3"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-[hsl(var(--primary)/.4)] px-3 py-2 text-xs font-bold text-[hsl(var(--primary))]"><Upload size={15} /> {logo ? 'Replace logo' : 'Add logo'}<input type="file" accept="image/*" className="sr-only" onChange={(e) => uploadLogo(e.target.files?.[0])} data-testid="input-invoice-logo" /></label>{logo && <button type="button" onClick={() => setLogo('')} className="text-xs font-bold text-[hsl(var(--muted-foreground))]" data-testid="button-remove-logo">Remove</button>}</div></div><div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><div className="mb-4 flex items-center justify-between"><h2 className="font-display text-xl font-bold">Line items</h2><Button variant="quiet" onClick={addItem} testId="button-add-line-item"><Plus size={15} /> Add line</Button></div><div className="hidden grid-cols-[1fr_70px_100px_32px] gap-2 px-1 pb-2 text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] sm:grid"><span>Description</span><span>Qty</span><span>Rate</span><span /></div><div className="space-y-2">{items.map((item, index) => <div key={item.id} className="grid gap-2 rounded-xl bg-[hsl(var(--muted)/.45)] p-2 sm:grid-cols-[1fr_70px_100px_32px] sm:bg-transparent sm:p-0"><input value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="What did you do?" className="h-10 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid={`input-line-description-${index}`} /><input value={item.qty} onChange={(e) => updateItem(item.id, 'qty', e.target.value)} type="number" min="0" className="h-10 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid={`input-line-qty-${index}`} /><input value={item.rate} onChange={(e) => updateItem(item.id, 'rate', e.target.value)} type="number" min="0" className="h-10 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid={`input-line-rate-${index}`} /><button type="button" onClick={() => setItems(items.filter((x) => x.id !== item.id))} className="grid size-10 place-items-center rounded-lg text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--destructive)/.1)] hover:text-[hsl(var(--destructive))]" aria-label="Remove line item" data-testid={`button-remove-line-${index}`}><Trash2 size={15} /></button></div>)}</div><div className="mt-5 grid gap-4 sm:grid-cols-[1fr_120px]"><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Note</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="h-20 w-full resize-none rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] p-3 text-sm" data-testid="textarea-invoice-notes" /></label><Field label="Tax %" value={tax} onChange={setTax} type="number" testId="input-invoice-tax" /></div></div><div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><h2 className="font-display text-xl font-bold">Choose a look</h2><div className="mt-4 grid grid-cols-3 gap-2">{(['signal', 'ledger', 'plain'] as const).map((x) => <button type="button" key={x} onClick={() => setTemplate(x)} className={`rounded-xl border p-3 text-left ${template === x ? 'border-[hsl(var(--primary))] bg-[hsl(var(--secondary)/.6)]' : 'border-[hsl(var(--border))]'}`} data-testid={`button-template-${x}`}><span className={`mb-3 block h-1.5 rounded-full ${x === 'signal' ? 'bg-[hsl(var(--primary))]' : x === 'ledger' ? 'bg-[hsl(var(--accent))]' : 'bg-[hsl(var(--foreground))]'}`} /><span className="text-xs font-bold capitalize">{x}</span></button>)}</div></div></section><section className="lg:sticky lg:top-[96px] lg:self-start"><div className="mb-3 flex items-center justify-between"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))]">Live preview</p><Button variant="outline" onClick={exportPdf} testId="button-download-invoice"><Download size={15} /> Download PDF</Button></div><div className={`paper-shadow min-h-[620px] rounded-[.4rem] border border-[hsl(var(--border))] bg-[#fffdf8] p-7 text-[#173d3a] md:p-10 ${template === 'plain' ? 'font-sans' : ''}`} data-testid="preview-invoice"><div className="flex items-start justify-between border-b-2 border-[#173d3a] pb-9">{logo ? <img src={logo} alt="Uploaded business logo" className="max-h-14 max-w-[130px] object-contain" data-testid="img-invoice-logo" /> : <div><div className="mb-2 h-3 w-28 rounded bg-[#173d3a]" /><p className="text-xs text-[#55706b]">{business || 'Your business'}</p></div>}<div className="text-right"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[#55706b]">Invoice</p><p className="mt-2 text-sm font-bold">{number || 'INV-000'}</p></div></div><div className="flex justify-between gap-5 py-8 text-sm"><div><p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#55706b]">Billed to</p><p className="font-bold">{client || 'Client name'}</p><p className="mt-1 text-[#55706b]">{email}</p></div><div className="text-right text-xs"><p><span className="text-[#55706b]">Issued </span>{date}</p><p className="mt-2"><span className="text-[#55706b]">Due </span>{due}</p></div></div><div className="border-t border-[#b8cbc5] pt-3"><div className="mb-2 grid grid-cols-[1fr_55px_85px] gap-2 px-1 text-[10px] font-bold uppercase tracking-wider text-[#55706b]"><span>Item</span><span>Qty</span><span className="text-right">Amount</span></div>{items.map((item) => <div key={item.id} className="grid grid-cols-[1fr_55px_85px] gap-2 border-t border-[#dce5e0] py-4 text-sm"><span className="font-medium">{item.description || 'Line item'}</span><span>{item.qty || 0}</span><span className="text-right">${(Number(item.qty || 0) * Number(item.rate || 0)).toFixed(2)}</span></div>)}</div><div className="ml-auto mt-8 max-w-[225px] space-y-3 border-t border-[#b8cbc5] pt-4 text-sm"><div className="flex justify-between"><span className="text-[#55706b]">Subtotal</span><span>${subtotal.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-[#55706b]">Tax ({tax || 0}%)</span><span>${taxAmount.toFixed(2)}</span></div><div className="flex justify-between border-t-2 border-[#173d3a] pt-3 text-base font-bold"><span>Total due</span><span>${total.toFixed(2)}</span></div></div><p className="mt-16 border-t border-[#dce5e0] pt-4 text-xs text-[#55706b]">{notes}</p></div></section></div><InfoSection title="A good invoice answers the next question" intro="A clean invoice is less about looking official and more about removing uncertainty. Put the who, what, when, and how much where a client can find them in one glance." bullets={['Give each invoice a simple, memorable number so conversations stay easy.', 'Use a due date rather than “net 30” alone. Specific dates reduce back-and-forth.', 'Keep line items plainspoken. A client should understand what they are paying for without decoding your process.']} faq={[['Does the invoice save automatically?', 'The form lives in the current browser tab. Nothing is sent to a server, and closing the tab clears the draft unless you save the exported PDF yourself.'], ['Can I add a logo?', 'Yes. Choose an image from your device. It is read locally and shown only in the preview and exported file.'], ['How is tax calculated?', 'Tax is applied to the subtotal of quantity multiplied by rate for each line item. You can set the percentage to zero.']]} /></main></PageMeta>;
+}
+
+function InfoSection({ title, intro, bullets, faq }: { title: string; intro: string; bullets: string[]; faq: [string, string][] }) {
+  return <section className="mx-auto mt-24 max-w-6xl border-t border-[hsl(var(--border))] px-5 py-16 lg:px-8"><div className="grid gap-12 lg:grid-cols-[.72fr_1.28fr]"><div><SectionHeading eyebrow="A little context" title={title} description={intro} /><ul className="mt-7 space-y-4">{bullets.map((b) => <li key={b} className="flex gap-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]"><Check size={16} className="mt-1 shrink-0 text-[hsl(var(--primary))]" />{b}</li>)}</ul></div><div><div className="mb-4 flex items-center gap-2 text-[hsl(var(--primary))]"><CircleHelp size={17} /><span className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em]">Questions, answered</span></div><FAQ items={faq} /></div></div></section>;
+}
+
+type ResumeData = { name: string; role: string; email: string; phone: string; location: string; summary: string; experience: string; education: string; skills: string };
+const starterResume: ResumeData = { name: 'Alex Morgan', role: 'Operations coordinator', email: 'alex.morgan@email.com', phone: '(415) 555-0198', location: 'Oakland, CA', summary: 'Resourceful operations coordinator who brings order to busy teams, improves handoffs, and makes the work easier to find.', experience: 'North Star Studio | Operations Coordinator | 2022–Present\nBuilt a lightweight intake process that cut request handoff time by 31%.\nManaged vendor relationships, calendars, and weekly reporting for a 14-person team.\n\nMoss & Field | Office Manager | 2019–2022\nOwned office operations, onboarding, and facilities for a growing creative studio.', education: 'B.A. Business Administration, California State University — East Bay', skills: 'Project coordination, Vendor management, Notion, Google Workspace, Process design' };
+
+function ResumeFormatter() {
+  const [tab, setTab] = useState<'plain' | 'structured'>('plain');
+  const [data, setData] = useState<ResumeData>(starterResume);
+  const update = (key: keyof ResumeData, value: string) => setData((previous) => ({ ...previous, [key]: value }));
+  const exportPdf = () => downloadBlob(createTextPdf(data.name, [data.role, `${data.email} · ${data.phone} · ${data.location}`, '', 'PROFILE', data.summary, '', 'EXPERIENCE', ...data.experience.split('\n'), '', 'EDUCATION', data.education, '', 'SKILLS', data.skills]), `${data.name.toLowerCase().replaceAll(' ', '-')}-resume.pdf`);
+  const exportJson = () => downloadText(JSON.stringify(data, null, 2), `${data.name.toLowerCase().replaceAll(' ', '-')}-resume.json`, 'application/json');
+  return <PageMeta title="Resume formatter" description="Format a plain-text resume into a clear, ATS-friendly document with PDF and JSON export."><main><ToolIntro id="resume"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Your draft stays on this device</span></ToolIntro><div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[.9fr_1.1fr] lg:px-8"><section className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><div className="flex items-center justify-between"><div className="flex rounded-xl bg-[hsl(var(--muted))] p-1"><button type="button" onClick={() => setTab('plain')} className={`rounded-lg px-3 py-2 text-xs font-bold ${tab === 'plain' ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid="button-resume-tab-plain"><FileText size={14} className="mr-1.5 inline" /> Plain text</button><button type="button" onClick={() => setTab('structured')} className={`rounded-lg px-3 py-2 text-xs font-bold ${tab === 'structured' ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid="button-resume-tab-structured"><LayoutTemplate size={14} className="mr-1.5 inline" /> Structured</button></div><span className="font-mono-ui text-[10px] text-[hsl(var(--muted-foreground))]">02 / 02</span></div>{tab === 'plain' ? <div className="mt-5"><label className="mb-2 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Paste or write your resume</label><textarea value={`${data.name}\n${data.role}\n${data.email} · ${data.phone} · ${data.location}\n\nPROFILE\n${data.summary}\n\nEXPERIENCE\n${data.experience}\n\nEDUCATION\n${data.education}\n\nSKILLS\n${data.skills}`} onChange={(e) => { const lines = e.target.value.split('\n'); update('name', lines[0] || ''); update('role', lines[1] || ''); update('summary', e.target.value.includes('PROFILE') ? e.target.value.split('PROFILE')[1]?.split('EXPERIENCE')[0]?.trim() || '' : data.summary); }} className="min-h-[560px] w-full resize-y rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] p-4 font-mono-ui text-xs leading-6 outline-none focus:ring-2 focus:ring-[hsl(var(--ring)/.25)]" data-testid="textarea-resume-plain" /><p className="mt-2 flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]"><Sparkles size={13} className="text-[hsl(var(--accent-foreground))]" /> Tip: use clear section labels for the easiest parse.</p></div> : <div className="mt-5 space-y-4">{[['name', 'Name'], ['role', 'Headline'], ['email', 'Email'], ['phone', 'Phone'], ['location', 'Location']].map(([key, label]) => <Field key={key} label={label} value={data[key as keyof ResumeData]} onChange={(v) => update(key as keyof ResumeData, v)} testId={`input-resume-${key}`} />)}<label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Profile</span><textarea value={data.summary} onChange={(e) => update('summary', e.target.value)} className="h-24 w-full resize-none rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] p-3 text-sm" data-testid="textarea-resume-summary" /></label><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Experience</span><textarea value={data.experience} onChange={(e) => update('experience', e.target.value)} className="h-40 w-full resize-none rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] p-3 text-sm leading-6" data-testid="textarea-resume-experience" /></label><Field label="Education" value={data.education} onChange={(v) => update('education', v)} testId="input-resume-education" /><Field label="Skills" value={data.skills} onChange={(v) => update('skills', v)} testId="input-resume-skills" /></div>}</section><section className="lg:sticky lg:top-[96px] lg:self-start"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))]">Formatted preview</p><div className="flex gap-2"><Button variant="outline" onClick={exportJson} testId="button-download-resume-json"><FileJson size={15} /> JSON</Button><Button onClick={exportPdf} testId="button-download-resume-pdf"><Download size={15} /> PDF</Button></div></div><div className="paper-shadow min-h-[680px] rounded-[.4rem] border border-[hsl(var(--border))] bg-[#fffdf8] p-7 text-[#173d3a] md:p-10" data-testid="preview-resume"><div className="border-b-2 border-[#173d3a] pb-6"><h2 className="font-display text-4xl font-bold tracking-[-.06em]">{data.name || 'Your name'}</h2><p className="mt-2 font-mono-ui text-[10px] font-bold uppercase tracking-[.13em] text-[#55706b]">{data.role || 'Your headline'}</p><p className="mt-4 text-xs text-[#55706b]">{[data.email, data.phone, data.location].filter(Boolean).join('  ·  ')}</p></div><div className="space-y-6 pt-7 text-sm"><div><h3 className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[#c66d35]">Profile</h3><p className="mt-2 leading-6">{data.summary}</p></div><div><h3 className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[#c66d35]">Experience</h3><div className="mt-2 whitespace-pre-line leading-6">{data.experience}</div></div><div><h3 className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[#c66d35]">Education</h3><p className="mt-2 leading-6">{data.education}</p></div><div><h3 className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[#c66d35]">Skills</h3><p className="mt-2 leading-6">{data.skills}</p></div></div></div></section></div><InfoSection title="Formatting is a kindness to the reader" intro="Hiring teams skim. A good resume makes the important parts easy to find, then earns a closer look with specific, credible detail." bullets={['Start bullets with a strong verb and include the result when you can.', 'Keep job titles, companies, and dates visually consistent across the page.', 'Use the plain-text view for editing, then switch to structured mode when you want control over each section.']} faq={[['Is this ATS-friendly?', 'The preview uses a simple hierarchy, standard section labels, and readable text rather than columns or decorative graphics. That makes it easier for many applicant tracking systems to parse, though no tool can guarantee a particular employer’s software.'], ['What does JSON export do?', 'It gives you a structured copy of your resume data. Keep it as a backup, move it into another tool, or use it as the source for future versions.'], ['Does the formatter send my resume anywhere?', 'No. The content stays in this browser tab. Exported files are created directly on your device.']]} /></main></PageMeta>;
+}
+
+function About() {
+  return <PageMeta title="About Office Toolkit" description="Learn why Office Toolkit is a local-first set of small tools for getting important work done."><main><section className="border-b border-[hsl(var(--border))]"><div className="mx-auto max-w-6xl px-5 pb-20 pt-16 lg:px-8 lg:pb-28 lg:pt-24"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">The idea</p><h1 className="mt-5 max-w-3xl font-display text-5xl font-bold leading-[.96] tracking-[-.06em] md:text-7xl">Work has enough<br /><span className="text-[hsl(var(--primary))]">friction already.</span></h1><p className="mt-7 max-w-xl text-lg leading-8 text-[hsl(var(--muted-foreground))]">Office Toolkit is a collection of focused, browser-first tools for the jobs that are too important to ignore and too small to deserve a new account.</p></div></section><section className="mx-auto grid max-w-6xl gap-14 px-5 py-20 lg:grid-cols-[.7fr_1.3fr] lg:px-8 lg:py-28"><SectionHeading eyebrow="Our point of view" title="Useful beats impressive." /><div className="space-y-8 text-base leading-8 text-[hsl(var(--muted-foreground))]"><p>We made Office Toolkit for the edge of the workday: the invoice you forgot to send, the resume you need to tidy before lunch, the signature waiting at the bottom of a PDF.</p><p>Each tool is intentionally narrow. It does one job, gives you a usable file, and gets out of the way. There are no dashboards to maintain and no upgrade prompts hovering over the finish line.</p><div className="grid gap-4 pt-4 sm:grid-cols-2"><div className="rounded-2xl bg-[hsl(var(--secondary)/.6)] p-6"><ShieldCheck className="text-[hsl(var(--primary))]" /><h3 className="mt-5 font-display text-xl font-bold text-[hsl(var(--foreground))]">Private by architecture</h3><p className="mt-2 text-sm leading-6">Your input is processed on your device. Local-first is not a badge; it is the default.</p></div><div className="rounded-2xl bg-[hsl(var(--accent)/.24)] p-6"><Zap className="text-[hsl(var(--accent-foreground))]" /><h3 className="mt-5 font-display text-xl font-bold text-[hsl(var(--foreground))]">Fast by respect</h3><p className="mt-2 text-sm leading-6">Small tasks deserve small interfaces. We keep the path from blank page to finished file short.</p></div></div></div></section><section className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"><div className="mx-auto max-w-6xl px-5 py-16 lg:px-8"><div className="flex flex-col justify-between gap-8 md:flex-row md:items-end"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.18em] text-[hsl(var(--accent))]">Keep in touch with the essentials</p><h2 className="mt-4 max-w-xl font-display text-4xl font-bold leading-[1] tracking-[-.05em]">Open a tool. Finish a thing. Keep moving.</h2></div><Link href="/" data-testid="link-about-tools" className="inline-flex items-center gap-2 text-sm font-bold text-[hsl(var(--accent))]">Browse the toolkit <ArrowRight size={16} /></Link></div></div></section></main></PageMeta>;
+}
+
+function Router() {
+  return <Shell><ErrorBoundary><Switch><Route path="/" component={Home} /><Route path="/e-signature-maker" component={ESignatureMaker} /><Route path="/invoice-generator" component={InvoiceGenerator} /><Route path="/resume-formatter" component={ResumeFormatter} /><Route path="/about" component={About} /><Route component={NotFound} /></Switch></ErrorBoundary></Shell>;
+}
+
+function App() {
+  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;
+}
+
+export default App;
