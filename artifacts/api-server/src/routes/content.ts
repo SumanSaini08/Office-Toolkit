@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { ReplitConnectors } from "@replit/connectors-sdk";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 export type BlogPost = {
   id: string;
@@ -142,6 +143,48 @@ export const defaultContent: OfficeToolkitContent = {
 
 const bucket = "office-toolkit";
 const objectPath = "content.json";
+const adminCookie = "office_toolkit_admin";
+
+function getSessionSecret() {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) throw new Error("SESSION_SECRET is not configured");
+  return secret;
+}
+
+function signAdminToken(expiresAt: number) {
+  const payload = Buffer.from(JSON.stringify({ expiresAt })).toString("base64url");
+  const signature = createHmac("sha256", getSessionSecret()).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+function readCookie(request: { headers: { cookie?: string } }, name: string) {
+  const value = request.headers.cookie?.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${name}=`));
+  return value ? decodeURIComponent(value.slice(name.length + 1)) : undefined;
+}
+
+function isAdmin(request: { headers: { cookie?: string } }) {
+  const token = readCookie(request, adminCookie);
+  if (!token) return false;
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) return false;
+  try {
+    const expected = createHmac("sha256", getSessionSecret()).update(payload).digest("base64url");
+    const validSignature = timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    if (!validSignature) return false;
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { expiresAt?: number };
+    return typeof data.expiresAt === "number" && data.expiresAt > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+function passwordsMatch(input: unknown) {
+  const configured = process.env.ADMIN_PASSWORD;
+  if (typeof input !== "string" || !configured) return false;
+  const inputHash = createHash("sha256").update(input).digest();
+  const configuredHash = createHash("sha256").update(configured).digest();
+  return timingSafeEqual(inputHash, configuredHash);
+}
 
 async function storageRequest(
   path: string,
@@ -203,7 +246,39 @@ router.get("/content", async (_req, res) => {
   }
 });
 
+router.get("/admin/session", (req, res) => {
+  res.json({ authenticated: isAdmin(req) });
+});
+
+router.post("/admin/login", (req, res) => {
+  if (!process.env.ADMIN_PASSWORD) {
+    res.status(503).json({ error: "Admin password is not configured." });
+    return;
+  }
+  if (!passwordsMatch(req.body?.password)) {
+    res.status(401).json({ error: "That password is not correct." });
+    return;
+  }
+  res.cookie(adminCookie, signAdminToken(Date.now() + 8 * 60 * 60 * 1000), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 8 * 60 * 60 * 1000,
+    path: "/",
+  });
+  res.json({ authenticated: true });
+});
+
+router.post("/admin/logout", (_req, res) => {
+  res.clearCookie(adminCookie, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+  res.json({ authenticated: false });
+});
+
 router.put("/content", async (req, res) => {
+  if (!isAdmin(req)) {
+    res.status(401).json({ error: "Admin login required." });
+    return;
+  }
   try {
     const current = await readContent();
     const next = {

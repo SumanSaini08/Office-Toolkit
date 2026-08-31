@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, Check, FileText, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, FileText, LockKeyhole, LogIn, LogOut, Plus, Save, Trash2 } from "lucide-react";
 import {
   fallbackContent,
   fetchOfficeToolkitContent,
@@ -80,14 +80,29 @@ function BlogPage() {
 }
 
 function AdminPage() {
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
   const [content, setContent] = useState<OfficeToolkitContent>(fallbackContent);
   const [activeTab, setActiveTab] = useState<"blog" | "signature" | "resume" | "currency">("blog");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchOfficeToolkitContent().then((remote) => setContent({ ...fallbackContent, ...remote })).catch(() => setStatus("Using local defaults. Save after the API is available.")).finally(() => setLoading(false));
+    fetch("/api/admin/session", { credentials: "include" })
+      .then((response) => response.json() as Promise<{ authenticated: boolean }>)
+      .then((session) => setAuthenticated(session.authenticated))
+      .catch(() => setAuthenticated(false))
+      .finally(() => setAuthChecked(true));
   }, []);
+
+  useEffect(() => {
+    if (!authenticated) return;
+    setLoading(true);
+    fetchOfficeToolkitContent()
+      .then((remote) => setContent({ ...fallbackContent, ...remote }))
+      .catch(() => setStatus("Using local defaults. Save after the API is available."))
+      .finally(() => setLoading(false));
+  }, [authenticated]);
 
   const update = <K extends keyof OfficeToolkitContent>(key: K, value: OfficeToolkitContent[K]) => setContent((current) => ({ ...current, [key]: value }));
   const save = async () => {
@@ -100,6 +115,11 @@ function AdminPage() {
       setStatus("Could not save. Check that the content service is running.");
     }
   };
+  const logout = async () => {
+    await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
+    setAuthenticated(false);
+    setStatus("");
+  };
   const tabs = [
     ["blog", "Blog posts"],
     ["signature", "Signature styles"],
@@ -107,13 +127,21 @@ function AdminPage() {
     ["currency", "Currencies"],
   ] as const;
 
+  if (!authChecked) {
+    return <><ContentMeta title="Admin panel" description="Manage Office Toolkit content." /><main className="grid min-h-[70vh] place-items-center px-5"><p className="text-sm text-[hsl(var(--muted-foreground))]">Checking admin access…</p></main></>;
+  }
+
+  if (!authenticated) {
+    return <AdminLogin onAuthenticated={() => setAuthenticated(true)} />;
+  }
+
   return (
     <>
       <ContentMeta title="Admin panel" description="Manage Office Toolkit content." />
       <main className="mx-auto max-w-6xl px-5 py-12 lg:px-8 lg:py-16">
         <div className="flex flex-col justify-between gap-6 border-b border-[hsl(var(--border))] pb-8 md:flex-row md:items-end">
           <div><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">Workbench admin</p><h1 className="mt-3 font-display text-5xl font-bold tracking-[-.06em]">Shape the useful bits.</h1><p className="mt-4 max-w-xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Manage the journal and the reusable templates that power your tools. Changes are stored in your connected Supabase workspace.</p></div>
-          <button type="button" onClick={save} className="btn-press inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 text-sm font-bold text-[hsl(var(--primary-foreground))]"><Save size={16} /> Save changes</button>
+          <div className="flex flex-wrap gap-2"><button type="button" onClick={logout} className="btn-press inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[hsl(var(--border))] px-4 text-sm font-bold"><LogOut size={16} /> Log out</button><button type="button" onClick={save} className="btn-press inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 text-sm font-bold text-[hsl(var(--primary-foreground))]"><Save size={16} /> Save changes</button></div>
         </div>
         <div className="mt-8 flex flex-wrap gap-2">
           {tabs.map(([id, label]) => <button key={id} type="button" onClick={() => setActiveTab(id)} className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${activeTab === id ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]" : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]"}`}>{label}</button>)}
@@ -130,6 +158,39 @@ function AdminPage() {
       </main>
     </>
   );
+}
+
+function AdminLogin({ onAuthenticated }: { onAuthenticated: () => void }) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitting(true);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const body = await response.json() as { error?: string };
+      if (!response.ok) {
+        setError(body.error ?? "Could not sign in.");
+        return;
+      }
+      setPassword("");
+      onAuthenticated();
+    } catch {
+      setError("Could not reach the admin service. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return <><ContentMeta title="Admin login" description="Sign in to manage Office Toolkit content." /><main className="grid min-h-[76vh] place-items-center px-5 py-12"><section className="w-full max-w-md rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-7 shadow-sm md:p-9"><div className="grid size-12 place-items-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><LockKeyhole size={21} /></div><p className="mt-7 font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">Restricted workspace</p><h1 className="mt-3 font-display text-4xl font-bold tracking-[-.06em]">Admin sign in</h1><p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Sign in to edit journal posts, signature styles, resume templates, and invoice currencies.</p><form onSubmit={submit} className="mt-7 space-y-4"><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Admin password</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required className="h-11 w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring)/.25)]" data-testid="input-admin-password" /></label>{error && <p className="rounded-xl bg-[hsl(var(--destructive)/.1)] px-3 py-2.5 text-sm text-[hsl(var(--destructive))]" role="alert">{error}</p>}<button type="submit" disabled={submitting} className="btn-press inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--primary))] text-sm font-bold text-[hsl(var(--primary-foreground))] disabled:cursor-wait disabled:opacity-60" data-testid="button-admin-login"><LogIn size={16} /> {submitting ? "Signing in…" : "Sign in"}</button></form><p className="mt-6 text-center text-xs leading-5 text-[hsl(var(--muted-foreground))]">Your session stays active for 8 hours on this device.</p></section></main></>;
 }
 
 function EditorFrame({ children, title, onAdd }: { children: React.ReactNode; title: string; onAdd: () => void }) {
