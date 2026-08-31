@@ -1,0 +1,1 @@
+- [Supabase content storage](supabase-content-storage.md) — editable Office Toolkit content persists as one private JSON object behind the API server.

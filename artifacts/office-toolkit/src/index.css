@@ -117,6 +117,7 @@
 @layer utilities {
   .font-display { font-family: var(--app-font-serif); }
   .font-mono-ui { font-family: var(--app-font-mono); }
+  .signature-cursive { font-family: "Brush Script MT", "Segoe Script", cursive; }
   .paper-shadow { box-shadow: 0 18px 55px hsl(var(--shadow-color) / .12), 0 3px 8px hsl(var(--shadow-color) / .08); }
   .soft-shadow { box-shadow: 0 7px 25px hsl(var(--shadow-color) / .08); }
   .grid-paper { background-image: linear-gradient(hsl(var(--primary) / .07) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--primary) / .07) 1px, transparent 1px); background-size: 28px 28px; }
