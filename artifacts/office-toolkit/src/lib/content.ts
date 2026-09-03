@@ -38,6 +38,33 @@ export type OfficeToolkitContent = {
 
 import { useEffect, useState } from "react";
 
+const resumeAccentPalette = ["#c66d35", "#174f4a", "#8d5a9b", "#b36b21", "#1d4ed8", "#be185d", "#0f766e", "#6d28d9"];
+const resumeTemplateNames = ["Signal", "Classic", "Studio", "Compact", "Ledger", "Editorial", "Grid", "Portfolio", "Focus", "Modern"];
+export const generatedResumeTemplates: ResumeTemplate[] = Array.from({ length: 60 }, (_, index) => {
+  const family = resumeTemplateNames[index % resumeTemplateNames.length];
+  const number = Math.floor(index / resumeTemplateNames.length) + 1;
+  return {
+    id: `resume-${index + 1}`,
+    name: number === 1 ? family : `${family} ${number}`,
+    description: number % 2 === 0 ? "Balanced hierarchy with a confident accent" : "Clear sections with an easy reading path",
+    accent: resumeAccentPalette[index % resumeAccentPalette.length],
+  };
+});
+
+const signatureFamilies = [
+  ["Cursive", "cursive", "A fluid, handwritten feel"],
+  ["Classic", "serif", "A confident formal line"],
+  ["Modern", "display", "Clean and unmistakable"],
+  ["Monogram", "mono", "Compact and distinctive"],
+  ["Ledger", "serif", "Measured and professional"],
+  ["Studio", "display", "Bold with a creative edge"],
+];
+export const generatedSignatureTemplates: SignatureTemplate[] = Array.from({ length: 24 }, (_, index) => {
+  const [family, font, description] = signatureFamilies[index % signatureFamilies.length];
+  const number = Math.floor(index / signatureFamilies.length) + 1;
+  return { id: `signature-${index + 1}`, name: number === 1 ? family : `${family} ${number}`, font, description };
+});
+
 export const fallbackContent: OfficeToolkitContent = {
   blogPosts: [
     {
@@ -71,18 +98,8 @@ export const fallbackContent: OfficeToolkitContent = {
       content: "The best digital signature is the one that works wherever you need it. Leave enough breathing room around the mark, choose a dark ink for light documents, and test it at the size it will actually appear.\n\nTyping your name can be a useful alternative when you need a repeatable sign-off. Choose a style that feels like you, keep the color consistent, and export with transparency so the image sits naturally on a contract, invoice, or letter.",
     },
   ],
-  signatureTemplates: [
-    { id: "editorial", name: "Editorial", font: "cursive", description: "A fluid, handwritten feel" },
-    { id: "classic", name: "Classic", font: "serif", description: "A confident formal line" },
-    { id: "modern", name: "Modern", font: "display", description: "Clean and unmistakable" },
-    { id: "monogram", name: "Monogram", font: "mono", description: "Compact and distinctive" },
-  ],
-  resumeTemplates: [
-    { id: "signal", name: "Signal", description: "High contrast with a clear reading path", accent: "#c66d35" },
-    { id: "classic", name: "Classic", description: "Quiet, traditional, and recruiter-friendly", accent: "#174f4a" },
-    { id: "studio", name: "Studio", description: "A little more personality for creative roles", accent: "#8d5a9b" },
-    { id: "compact", name: "Compact", description: "Dense and tidy for a one-page resume", accent: "#b36b21" },
-  ],
+  signatureTemplates: generatedSignatureTemplates,
+  resumeTemplates: generatedResumeTemplates,
   currencies: [
     { code: "INR", symbol: "₹", name: "Indian Rupee" },
     { code: "USD", symbol: "$", name: "US Dollar" },

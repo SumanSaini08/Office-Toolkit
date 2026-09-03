@@ -199,20 +199,278 @@ function createTextPdf(title: string, lines: string[]) {
   let pdf = '%PDF-1.4\n'; const offsets = [0]; objects.forEach((obj) => { offsets.push(pdf.length); pdf += `${obj}\n`; }); const xref = pdf.length; pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`; offsets.slice(1).forEach((o) => { pdf += `${String(o).padStart(10, '0')} 00000 n \n`; }); pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`; return new Blob([pdf], { type: 'application/pdf' });
 }
 
-function SignatureCanvas({ color }: { color: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const drawing = useRef(false);
-  const last = useRef({ x: 0, y: 0 });
-  const clear = () => { const canvas = canvasRef.current; if (canvas) canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height); };
-  const point = (e: PointerEvent<HTMLCanvasElement>) => { const canvas = canvasRef.current!; const rect = canvas.getBoundingClientRect(); return { x: (e.clientX - rect.left) * canvas.width / rect.width, y: (e.clientY - rect.top) * canvas.height / rect.height }; };
-  const down = (e: PointerEvent<HTMLCanvasElement>) => { drawing.current = true; last.current = point(e); canvasRef.current?.setPointerCapture(e.pointerId); };
-  const move = (e: PointerEvent<HTMLCanvasElement>) => { if (!drawing.current) return; const canvas = canvasRef.current!; const ctx = canvas.getContext('2d')!; const p = point(e); ctx.strokeStyle = color; ctx.lineWidth = 3.1; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(last.current.x, last.current.y); ctx.lineTo(p.x, p.y); ctx.stroke(); last.current = p; };
-  const up = () => { drawing.current = false; };
-  const save = () => { canvasRef.current?.toBlob((blob) => blob && downloadBlob(blob, 'office-signature.png'), 'image/png'); };
-  return <div><div className="grid-paper relative overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]"><canvas ref={canvasRef} width={900} height={340} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={up} className="signature-canvas block h-[245px] w-full md:h-[315px]" data-testid="canvas-signature" /><span className="pointer-events-none absolute bottom-9 left-8 right-8 border-b border-[hsl(var(--primary)/.3)]" /><span className="pointer-events-none absolute bottom-3 left-8 font-mono-ui text-[9px] uppercase tracking-[.13em] text-[hsl(var(--muted-foreground))]">Sign above</span></div><div className="mt-3 flex flex-wrap justify-between gap-2"><Button variant="quiet" onClick={clear} testId="button-clear-signature"><RotateCcw size={15} /> Clear</Button><Button variant="primary" onClick={save} testId="button-download-signature"><Download size={15} /> Download transparent PNG</Button></div></div>;
+function drawWrappedText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines = 10) {
+  const words = text.split(/\s+/);
+  let line = '';
+  let lineCount = 0;
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (ctx.measureText(next).width > maxWidth && line) {
+      ctx.fillText(line, x, y + lineCount * lineHeight);
+      line = word;
+      lineCount += 1;
+      if (lineCount >= maxLines) return y + lineCount * lineHeight;
+    } else {
+      line = next;
+    }
+  }
+  if (line && lineCount < maxLines) {
+    ctx.fillText(line, x, y + lineCount * lineHeight);
+    lineCount += 1;
+  }
+  return y + lineCount * lineHeight;
 }
 
-function ESignatureMaker() {
+function createImagePdf(canvas: HTMLCanvasElement) {
+  const jpeg = canvas.toDataURL('image/jpeg', 0.94).split(',')[1];
+  const imageBytes = Uint8Array.from(atob(jpeg), (char) => char.charCodeAt(0));
+  const pageWidth = 612;
+  const pageHeight = Math.max(792, Math.round(pageWidth * canvas.height / canvas.width));
+  const imageObject = `<< /Type /XObject /Subtype /Image /Width ${canvas.width} /Height ${canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageBytes.length} >>\nstream\n`;
+  const content = `q\n${pageWidth} 0 0 ${pageHeight} 0 0 cm\n/Im0 Do\nQ`;
+  const objectBodies: Array<string | Uint8Array> = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /XObject << /Im0 6 0 R >> >> /Contents 5 0 R >>`,
+    '<< /Length 0 >>\nstream\n\nendstream',
+    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+    imageObject,
+  ];
+  const encoder = new TextEncoder();
+  const parts: Uint8Array[] = [encoder.encode('%PDF-1.4\n')];
+  const offsets = [0];
+  let length = parts[0].length;
+  objectBodies.forEach((body, index) => {
+    offsets.push(length);
+    const opening = encoder.encode(`${index + 1} 0 obj\n`);
+    parts.push(opening);
+    length += opening.length;
+    if (typeof body === 'string') {
+      const bytes = encoder.encode(`${body}\nendobj\n`);
+      parts.push(bytes);
+      length += bytes.length;
+    } else {
+      parts.push(body);
+      length += body.length;
+      const closing = encoder.encode('\nendstream\nendobj\n');
+      parts.push(closing);
+      length += closing.length;
+    }
+  });
+  const xrefOffset = length;
+  const xref = [`xref\n0 ${objectBodies.length + 1}`, '0000000000 65535 f '];
+  offsets.slice(1).forEach((offset) => xref.push(`${String(offset).padStart(10, '0')} 00000 n `));
+  xref.push(`trailer\n<< /Size ${objectBodies.length + 1} /Root 1 0 R >>`, `startxref\n${xrefOffset}`, '%%EOF');
+  parts.push(encoder.encode(`${xref.join('\n')}\n`));
+  return new Blob(parts as unknown as BlobPart[], { type: 'application/pdf' });
+}
+
+function saveCanvas(canvas: HTMLCanvasElement, name: string, format: 'png' | 'jpg' | 'webp' | 'pdf') {
+  if (format === 'pdf') {
+    downloadBlob(createImagePdf(canvas), `${name}.pdf`);
+    return;
+  }
+  const extension = format === 'jpg' ? 'jpg' : format;
+  const mime = format === 'jpg' ? 'image/jpeg' : format === 'webp' ? 'image/webp' : 'image/png';
+  canvas.toBlob((blob) => blob && downloadBlob(blob, `${name}.${extension}`), mime, 0.94);
+}
+
+function hexRgb(hex: string) {
+  const value = hex.replace('#', '');
+  return {
+    r: Number.parseInt(value.slice(0, 2), 16) || 23,
+    g: Number.parseInt(value.slice(2, 4), 16) || 61,
+    b: Number.parseInt(value.slice(4, 6), 16) || 58,
+  };
+}
+
+function processSignatureImage(file: File, color: string) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 420;
+      const ctx = canvas.getContext('2d')!;
+      const scale = Math.min(1080 / image.width, 330 / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      ctx.drawImage(image, (1200 - width) / 2, (420 - height) / 2, width, height);
+      const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const rgb = hexRgb(color);
+      for (let index = 0; index < pixels.data.length; index += 4) {
+        const luminance = (pixels.data[index] * 0.299) + (pixels.data[index + 1] * 0.587) + (pixels.data[index + 2] * 0.114);
+        const ink = Math.max(0, Math.min(255, (255 - luminance) * 2.4));
+        pixels.data[index] = rgb.r;
+        pixels.data[index + 1] = rgb.g;
+        pixels.data[index + 2] = rgb.b;
+        pixels.data[index + 3] = Math.round(ink);
+      }
+      ctx.putImageData(pixels, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+      URL.revokeObjectURL(image.src);
+    };
+    image.onerror = reject;
+    image.src = URL.createObjectURL(file);
+  });
+}
+
+function saveSignatureDataUrl(dataUrl: string, name: string, format: 'png' | 'jpg' | 'webp' | 'pdf') {
+  const image = new Image();
+  image.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 420;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#fffdf8';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    saveCanvas(canvas, name, format);
+  };
+  image.src = dataUrl;
+}
+
+function renderInvoiceCanvas(input: { business: string; client: string; email: string; number: string; date: string; due: string; tax: string; notes: string; symbol: string; currencyName: string; items: LineItem[]; subtotal: number; taxAmount: number; total: number }) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 1500;
+  const ctx = canvas.getContext('2d')!;
+  const money = (value: number) => `${input.symbol}${value.toFixed(2)}`;
+  ctx.fillStyle = '#fffdf8';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#173d3a';
+  ctx.font = '700 46px Arial';
+  ctx.fillText(input.business || 'Your business', 90, 120);
+  ctx.textAlign = 'right';
+  ctx.font = '700 15px monospace';
+  ctx.fillText('INVOICE', 1110, 90);
+  ctx.font = '700 24px Arial';
+  ctx.fillText(input.number || 'INV-000', 1110, 126);
+  ctx.textAlign = 'left';
+  ctx.fillRect(90, 170, 1020, 4);
+  ctx.fillStyle = '#55706b';
+  ctx.font = '700 14px monospace';
+  ctx.fillText('BILLED TO', 90, 245);
+  ctx.fillStyle = '#173d3a';
+  ctx.font = '700 23px Arial';
+  ctx.fillText(input.client || 'Client name', 90, 280);
+  ctx.fillStyle = '#55706b';
+  ctx.font = '18px Arial';
+  ctx.fillText(input.email, 90, 314);
+  ctx.textAlign = 'right';
+  ctx.fillText(`Issued  ${input.date}`, 1110, 270);
+  ctx.fillText(`Due  ${input.due}`, 1110, 304);
+  ctx.textAlign = 'left';
+  ctx.strokeStyle = '#b8cbc5';
+  ctx.beginPath();
+  ctx.moveTo(90, 370);
+  ctx.lineTo(1110, 370);
+  ctx.stroke();
+  ctx.fillStyle = '#55706b';
+  ctx.font = '700 14px monospace';
+  ctx.fillText('ITEM', 90, 405);
+  ctx.fillText('QTY', 860, 405);
+  ctx.textAlign = 'right';
+  ctx.fillText('AMOUNT', 1110, 405);
+  ctx.textAlign = 'left';
+  let y = 455;
+  input.items.forEach((item) => {
+    ctx.strokeStyle = '#dce5e0';
+    ctx.beginPath();
+    ctx.moveTo(90, y - 28);
+    ctx.lineTo(1110, y - 28);
+    ctx.stroke();
+    ctx.fillStyle = '#173d3a';
+    ctx.font = '20px Arial';
+    ctx.fillText(item.description || 'Line item', 90, y);
+    ctx.fillText(item.qty || '0', 860, y);
+    ctx.textAlign = 'right';
+    ctx.fillText(money(Number(item.qty || 0) * Number(item.rate || 0)), 1110, y);
+    ctx.textAlign = 'left';
+    y += 65;
+  });
+  y += 45;
+  ctx.strokeStyle = '#b8cbc5';
+  ctx.beginPath();
+  ctx.moveTo(760, y - 30);
+  ctx.lineTo(1110, y - 30);
+  ctx.stroke();
+  ctx.fillStyle = '#55706b';
+  ctx.font = '18px Arial';
+  ctx.fillText('Subtotal', 760, y);
+  ctx.textAlign = 'right';
+  ctx.fillText(money(input.subtotal), 1110, y);
+  ctx.textAlign = 'left';
+  ctx.fillText(`Tax (${input.tax || 0}%)`, 760, y + 45);
+  ctx.textAlign = 'right';
+  ctx.fillText(money(input.taxAmount), 1110, y + 45);
+  ctx.textAlign = 'left';
+  ctx.strokeStyle = '#173d3a';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(760, y + 75);
+  ctx.lineTo(1110, y + 75);
+  ctx.stroke();
+  ctx.fillStyle = '#173d3a';
+  ctx.font = '700 22px Arial';
+  ctx.fillText('Total due', 760, y + 120);
+  ctx.textAlign = 'right';
+  ctx.fillText(money(input.total), 1110, y + 120);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#55706b';
+  ctx.font = '16px Arial';
+  drawWrappedText(ctx, input.notes, 90, 1380, 1020, 25, 3);
+  return canvas;
+}
+
+function renderResumeCanvas(data: ResumeData, accent: string) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 1600;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#fffdf8';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#173d3a';
+  ctx.font = '700 58px Arial';
+  ctx.fillText(data.name || 'Your name', 90, 120);
+  ctx.fillStyle = accent;
+  ctx.font = '700 16px monospace';
+  ctx.fillText((data.role || 'Your headline').toUpperCase(), 90, 160);
+  ctx.fillStyle = '#55706b';
+  ctx.font = '18px Arial';
+  ctx.fillText([data.email, data.phone, data.location].filter(Boolean).join('  ·  '), 90, 205);
+  ctx.fillStyle = '#173d3a';
+  ctx.fillRect(90, 250, 1020, 4);
+  const section = (label: string, value: string, y: number) => {
+    ctx.fillStyle = accent;
+    ctx.font = '700 14px monospace';
+    ctx.fillText(label, 90, y);
+    ctx.fillStyle = '#173d3a';
+    ctx.font = '20px Arial';
+    return drawWrappedText(ctx, value, 90, y + 38, 1020, 30, 8) + 35;
+  };
+  let y = 315;
+  y = section('PROFILE', data.summary, y);
+  y = section('EXPERIENCE', data.experience, y);
+  y = section('EDUCATION', data.education, y);
+  section('SKILLS', data.skills, y);
+  return canvas;
+}
+
+function SignatureCanvas({ color, canvasRef: externalRef }: { color: string; canvasRef?: React.RefObject<HTMLCanvasElement | null> }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ref = externalRef ?? canvasRef;
+  const drawing = useRef(false);
+  const last = useRef({ x: 0, y: 0 });
+  const clear = () => { const canvas = ref.current; if (canvas) canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height); };
+  const point = (e: PointerEvent<HTMLCanvasElement>) => { const canvas = ref.current!; const rect = canvas.getBoundingClientRect(); return { x: (e.clientX - rect.left) * canvas.width / rect.width, y: (e.clientY - rect.top) * canvas.height / rect.height }; };
+  const down = (e: PointerEvent<HTMLCanvasElement>) => { drawing.current = true; last.current = point(e); ref.current?.setPointerCapture(e.pointerId); };
+  const move = (e: PointerEvent<HTMLCanvasElement>) => { if (!drawing.current) return; const canvas = ref.current!; const ctx = canvas.getContext('2d')!; const p = point(e); ctx.strokeStyle = color; ctx.lineWidth = 3.1; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(last.current.x, last.current.y); ctx.lineTo(p.x, p.y); ctx.stroke(); last.current = p; };
+  const up = () => { drawing.current = false; };
+  return <div><div className="grid-paper relative overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]"><canvas ref={ref} width={900} height={340} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={up} className="signature-canvas block h-[245px] w-full md:h-[315px]" data-testid="canvas-signature" /><span className="pointer-events-none absolute bottom-9 left-8 right-8 border-b border-[hsl(var(--primary)/.3)]" /><span className="pointer-events-none absolute bottom-3 left-8 font-mono-ui text-[9px] uppercase tracking-[.13em] text-[hsl(var(--muted-foreground))]">Sign above</span></div><div className="mt-3"><Button variant="quiet" onClick={clear} testId="button-clear-signature"><RotateCcw size={15} /> Clear</Button></div></div>;
+}
+
+function ESignatureMakerLegacy() {
   const content = useOfficeToolkitContent();
   const [mode, setMode] = useState<'draw' | 'type'>('draw');
   const [color, setColor] = useState('#174f4a');
@@ -234,6 +492,56 @@ function ESignatureMaker() {
     canvas.toBlob((blob) => blob && downloadBlob(blob, 'office-signature.png'), 'image/png');
   };
   return <PageMeta title="E-signature maker" description="Draw or type a free digital signature and download a transparent PNG. Private and instant in your browser."><main><ToolIntro id="signature"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Nothing leaves your browser</span></ToolIntro><div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[1.2fr_.8fr] lg:px-8"><section className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 shadow-sm md:p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div className="flex rounded-xl bg-[hsl(var(--muted))] p-1"><button type="button" onClick={() => setMode('draw')} className={`rounded-lg px-3 py-2 text-xs font-bold ${mode === 'draw' ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid="button-signature-mode-draw"><Hand size={14} className="mr-1.5 inline" /> Draw</button><button type="button" onClick={() => setMode('type')} className={`rounded-lg px-3 py-2 text-xs font-bold ${mode === 'type' ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid="button-signature-mode-type"><FileText size={14} className="mr-1.5 inline" /> Type</button></div><label className="flex items-center gap-2 text-xs font-bold text-[hsl(var(--muted-foreground))]">Ink <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="size-8 cursor-pointer rounded-lg border-0 bg-transparent p-0" data-testid="input-signature-color" /></label></div>{mode === 'draw' ? <SignatureCanvas color={color} /> : <div><div className="flex min-h-[245px] items-center justify-center rounded-2xl border border-dashed border-[hsl(var(--primary)/.35)] bg-[hsl(var(--background))] px-4 md:min-h-[315px]"><span style={{ color }} className={`${fontClass} text-center text-5xl font-bold tracking-[-.06em] md:text-7xl`} data-testid="text-signature-preview">{name || 'Your name'}</span></div><div className="mt-4"><Field label="Your name" value={name} onChange={setName} placeholder="Type your name" testId="input-signature-name" /></div><div className="mt-5"><div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold text-[hsl(var(--muted-foreground))]">Signature templates</span><span className="font-mono-ui text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">{content.signatureTemplates.length} styles</span></div><div className="grid gap-2 sm:grid-cols-2">{content.signatureTemplates.map((item) => <button type="button" key={item.id} onClick={() => setTemplateId(item.id)} className={`rounded-xl border p-3 text-left transition-colors ${template?.id === item.id ? 'border-[hsl(var(--primary))] bg-[hsl(var(--secondary)/.6)]' : 'border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]'}`} data-testid={`button-signature-template-${item.id}`}><span className={`${item.font === 'serif' ? 'font-serif' : item.font === 'display' ? 'font-display' : item.font === 'mono' ? 'font-mono-ui' : 'signature-cursive'} text-lg font-bold`}>{name || 'Your name'}</span><span className="mt-1 block text-[11px] text-[hsl(var(--muted-foreground))]">{item.name} · {item.description}</span></button>)}</div></div><Button onClick={downloadTyped} className="mt-5 w-full sm:w-auto" testId="button-download-typed-signature"><Download size={15} /> Download transparent PNG</Button></div>}</section><aside className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--secondary)/.32)] p-6"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--primary))]">Good to know</p><h2 className="mt-3 font-display text-2xl font-bold tracking-[-.035em]">A signature that travels well</h2><div className="mt-6 space-y-5">{[['Transparent by default', 'Drop your PNG onto a PDF, contract, or email without a white box around it.'], ['Yours in a moment', 'Use a stylus, mouse, trackpad, or type a name. The result is yours to keep.'], ['No secret handshake', 'There is no account and no upload. The canvas exists only on this page.']].map(([h, p]) => <div key={h} className="flex gap-3"><span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"><Check size={14} /></span><div><h3 className="text-sm font-bold">{h}</h3><p className="mt-1 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{p}</p></div></div>)}</div></aside></div><InfoSection title="Digital signatures, without the ceremony" intro="A signature image is useful when you need to approve a document quickly, add a sign-off to a proposal, or make a form feel finished. Office Toolkit keeps that small job small." bullets={['Use a dark ink color for the clearest result on light documents.', 'Leave generous space around a drawn signature so it stays legible when resized.', 'A PNG with transparency works over colored paper, scanned forms, and email templates.']} faq={[['Is my signature uploaded?', 'No. The drawing canvas and typed preview run locally in your browser. The PNG is created on your device.'], ['Can I use the signature on a contract?', 'This tool creates an image of your signature. Whether that image meets a particular legal or company requirement depends on the document and jurisdiction.'], ['Why is my download transparent?', 'Transparency lets the signature sit naturally on top of a document. There is no white rectangle to crop out.']]} /></main></PageMeta>;
+}
+
+function ESignatureMaker() {
+  const content = useOfficeToolkitContent();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [mode, setMode] = useState<'draw' | 'type' | 'upload'>('draw');
+  const [color, setColor] = useState('#174f4a');
+  const [name, setName] = useState('Alex Morgan');
+  const [templateId, setTemplateId] = useState('editorial');
+  const [exportFormat, setExportFormat] = useState<'png' | 'jpg' | 'pdf'>('png');
+  const [processedImage, setProcessedImage] = useState('');
+  const [imageError, setImageError] = useState('');
+  const template = content.signatureTemplates.find((item) => item.id === templateId) ?? content.signatureTemplates[0];
+  const fontClass = template?.font === 'serif' ? 'font-serif' : template?.font === 'display' ? 'font-display' : template?.font === 'mono' ? 'font-mono-ui' : 'signature-cursive';
+  const fontStack = template?.font === 'serif' ? 'Georgia' : template?.font === 'display' ? 'Arial Black' : template?.font === 'mono' ? 'monospace' : 'cursive';
+  const colors = ['#174f4a', '#1d4ed8', '#6d28d9', '#be185d', '#b45309', '#111827', '#b91c1c', '#047857'];
+
+  const typedSignature = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 420;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#fffdf8';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = color;
+    ctx.font = `bold 120px ${fontStack}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name || 'Your name', 600, 210);
+    return canvas;
+  };
+  const downloadCurrent = () => {
+    if (mode === 'upload' && processedImage) {
+      saveSignatureDataUrl(processedImage, 'office-signature', exportFormat);
+      return;
+    }
+    const canvas = mode === 'type' ? typedSignature() : canvasRef.current;
+    if (canvas) saveCanvas(canvas, 'office-signature', exportFormat);
+  };
+  const upload = async (file?: File) => {
+    if (!file) return;
+    try {
+      setImageError('');
+      setProcessedImage(await processSignatureImage(file, color));
+    } catch {
+      setImageError('This image could not be processed. Please choose a PNG, JPG, or WebP file.');
+    }
+  };
+
+  return <PageMeta title="E-signature maker" description="Draw, type, or professionalize a signature image and download it as PNG, JPG, or PDF. Private and instant in your browser."><main><ToolIntro id="signature"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Nothing leaves your browser</span></ToolIntro><div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[1.2fr_.8fr] lg:px-8"><section className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 shadow-sm md:p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div className="flex rounded-xl bg-[hsl(var(--muted))] p-1"><button type="button" onClick={() => setMode('draw')} className={`rounded-lg px-3 py-2 text-xs font-bold ${mode === 'draw' ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid="button-signature-mode-draw"><Hand size={14} className="mr-1.5 inline" /> Draw</button><button type="button" onClick={() => setMode('type')} className={`rounded-lg px-3 py-2 text-xs font-bold ${mode === 'type' ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid="button-signature-mode-type"><FileText size={14} className="mr-1.5 inline" /> Type</button><button type="button" onClick={() => setMode('upload')} className={`rounded-lg px-3 py-2 text-xs font-bold ${mode === 'upload' ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid="button-signature-mode-upload"><Upload size={14} className="mr-1.5 inline" /> Image</button></div><div className="flex items-center gap-2"><span className="text-xs font-bold text-[hsl(var(--muted-foreground))]">Ink</span><div className="flex gap-1.5">{colors.map((item) => <button key={item} type="button" aria-label={`Use ${item} ink`} onClick={() => setColor(item)} className={`size-6 rounded-full border-2 ${color === item ? 'scale-110 border-[hsl(var(--foreground))]' : 'border-transparent'}`} style={{ backgroundColor: item }} data-testid={`button-signature-color-${item.slice(1)}`} />)}<input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="size-7 cursor-pointer rounded-full border-0 bg-transparent p-0" aria-label="Choose a custom ink color" data-testid="input-signature-color" /></div></div></div>{mode === 'draw' && <SignatureCanvas color={color} canvasRef={canvasRef} />}{mode === 'type' && <div><div className="flex min-h-[245px] items-center justify-center rounded-2xl border border-dashed border-[hsl(var(--primary)/.35)] bg-[hsl(var(--background))] px-4 md:min-h-[315px]"><span style={{ color }} className={`${fontClass} text-center text-5xl font-bold tracking-[-.06em] md:text-7xl`} data-testid="text-signature-preview">{name || 'Your name'}</span></div><div className="mt-4"><Field label="Your name" value={name} onChange={setName} placeholder="Type your name" testId="input-signature-name" /></div><div className="mt-5 grid gap-2 sm:grid-cols-2">{content.signatureTemplates.map((item) => <button type="button" key={item.id} onClick={() => setTemplateId(item.id)} className={`rounded-xl border p-3 text-left transition-colors ${template?.id === item.id ? 'border-[hsl(var(--primary))] bg-[hsl(var(--secondary)/.6)]' : 'border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]'}`} data-testid={`button-signature-template-${item.id}`}><span className={`${item.font === 'serif' ? 'font-serif' : item.font === 'display' ? 'font-display' : item.font === 'mono' ? 'font-mono-ui' : 'signature-cursive'} text-lg font-bold`}>{name || 'Your name'}</span><span className="mt-1 block text-[11px] text-[hsl(var(--muted-foreground))]">{item.name} · {item.description}</span></button>)}</div></div>}{mode === 'upload' && <div><div className="flex min-h-[245px] items-center justify-center rounded-2xl border border-dashed border-[hsl(var(--primary)/.35)] bg-[hsl(var(--background))] px-4 md:min-h-[315px]">{processedImage ? <img src={processedImage} alt="Professionalized signature preview" className="max-h-48 max-w-full object-contain" data-testid="img-signature-processed" /> : <div className="text-center"><Upload className="mx-auto text-[hsl(var(--primary))]" size={28} /><p className="mt-3 text-sm font-bold">Upload a rough signature image</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">We remove the paper background and recolor the ink locally.</p></div>}</div><div className="mt-4 flex flex-wrap items-center gap-3"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-[hsl(var(--primary)/.4)] px-3 py-2 text-xs font-bold text-[hsl(var(--primary))]"><Upload size={15} /> {processedImage ? 'Replace image' : 'Choose image'}<input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => upload(e.target.files?.[0])} data-testid="input-signature-image" /></label>{processedImage && <button type="button" onClick={() => setProcessedImage('')} className="text-xs font-bold text-[hsl(var(--muted-foreground))]">Remove</button>}</div>{imageError && <p className="mt-3 text-xs text-[hsl(var(--destructive))]" role="alert">{imageError}</p>}<p className="mt-4 text-xs leading-5 text-[hsl(var(--muted-foreground))]">Best results come from a dark signature on a light, uncluttered background.</p></div>}<div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[hsl(var(--border))] pt-4"><label className="flex items-center gap-2 text-xs font-bold text-[hsl(var(--muted-foreground))]">Download as <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as 'png' | 'jpg' | 'pdf')} className="h-9 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-2 text-xs" data-testid="select-signature-export-format"><option value="png">PNG</option><option value="jpg">JPG</option><option value="pdf">PDF</option></select></label><Button onClick={downloadCurrent} className="w-full sm:w-auto" testId="button-download-signature"><Download size={15} /> Download signature</Button></div></section><aside className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--secondary)/.32)] p-6"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--primary))]">Good to know</p><h2 className="mt-3 font-display text-2xl font-bold tracking-[-.035em]">A signature that travels well</h2><div className="mt-6 space-y-5">{[['Transparent by default', 'Drop your PNG onto a PDF, contract, or email without a white box around it.'], ['Yours in a moment', 'Use a stylus, mouse, trackpad, or type a name. The result is yours to keep.'], ['Professional by design', 'Upload a rough image and we clean its background, ink, and color on this device.']].map(([h, p]) => <div key={h} className="flex gap-3"><span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"><Check size={14} /></span><div><h3 className="text-sm font-bold">{h}</h3><p className="mt-1 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{p}</p></div></div>)}</div></aside></div><InfoSection title="Digital signatures, without the ceremony" intro="A signature image is useful when you need to approve a document quickly, add a sign-off to a proposal, or make a form feel finished. Office Toolkit keeps that small job small." bullets={['Use a dark ink color for the clearest result on light documents.', 'Leave generous space around a drawn signature so it stays legible when resized.', 'Upload a rough signature and get a clean, recolored version with a transparent background.']} faq={[['Is my signature uploaded?', 'No. The drawing canvas, upload processing, and typed preview run locally in your browser.'], ['Can I use the signature on a contract?', 'This tool creates an image of your signature. Whether that image meets a particular legal or company requirement depends on the document and jurisdiction.'], ['Which formats can I download?', 'You can download a signature as PNG, JPG, or PDF. PNG is best when you need a transparent background.']]} /></main></PageMeta>;
 }
 
 type LineItem = { id: number; description: string; qty: string; rate: string };
@@ -259,7 +567,7 @@ function InvoiceGeneratorLegacy() {
   return <PageMeta title="Invoice generator" description="Create a polished invoice with line items, tax, logo upload, live preview, and PDF export. Everything stays local."><main><ToolIntro id="invoice"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Local-only draft</span></ToolIntro><div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[.93fr_1.07fr] lg:px-8"><section className="space-y-5"><div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><div className="mb-5 flex items-center justify-between"><h2 className="font-display text-xl font-bold">Invoice details</h2><span className="font-mono-ui text-[10px] text-[hsl(var(--muted-foreground))]">01 / 03</span></div><div className="grid gap-4 sm:grid-cols-2"><Field label="From" value={business} onChange={setBusiness} testId="input-invoice-business" /><Field label="Bill to" value={client} onChange={setClient} testId="input-invoice-client" /><Field label="Client email" value={email} onChange={setEmail} type="email" testId="input-invoice-email" /><Field label="Invoice number" value={number} onChange={setNumber} testId="input-invoice-number" /><Field label="Issue date" value={date} onChange={setDate} type="date" testId="input-invoice-date" /><Field label="Due date" value={due} onChange={setDue} type="date" testId="input-invoice-due" /></div><div className="mt-5 flex flex-wrap items-center gap-3"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-[hsl(var(--primary)/.4)] px-3 py-2 text-xs font-bold text-[hsl(var(--primary))]"><Upload size={15} /> {logo ? 'Replace logo' : 'Add logo'}<input type="file" accept="image/*" className="sr-only" onChange={(e) => uploadLogo(e.target.files?.[0])} data-testid="input-invoice-logo" /></label>{logo && <button type="button" onClick={() => setLogo('')} className="text-xs font-bold text-[hsl(var(--muted-foreground))]" data-testid="button-remove-logo">Remove</button>}</div></div><div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><div className="mb-4 flex items-center justify-between"><h2 className="font-display text-xl font-bold">Line items</h2><Button variant="quiet" onClick={addItem} testId="button-add-line-item"><Plus size={15} /> Add line</Button></div><div className="hidden grid-cols-[1fr_70px_100px_32px] gap-2 px-1 pb-2 text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] sm:grid"><span>Description</span><span>Qty</span><span>Rate</span><span /></div><div className="space-y-2">{items.map((item, index) => <div key={item.id} className="grid gap-2 rounded-xl bg-[hsl(var(--muted)/.45)] p-2 sm:grid-cols-[1fr_70px_100px_32px] sm:bg-transparent sm:p-0"><input value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="What did you do?" className="h-10 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid={`input-line-description-${index}`} /><input value={item.qty} onChange={(e) => updateItem(item.id, 'qty', e.target.value)} type="number" min="0" className="h-10 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid={`input-line-qty-${index}`} /><input value={item.rate} onChange={(e) => updateItem(item.id, 'rate', e.target.value)} type="number" min="0" className="h-10 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid={`input-line-rate-${index}`} /><button type="button" onClick={() => setItems(items.filter((x) => x.id !== item.id))} className="grid size-10 place-items-center rounded-lg text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--destructive)/.1)] hover:text-[hsl(var(--destructive))]" aria-label="Remove line item" data-testid={`button-remove-line-${index}`}><Trash2 size={15} /></button></div>)}</div><div className="mt-5 grid gap-4 sm:grid-cols-[1fr_120px]"><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Note</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="h-20 w-full resize-none rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] p-3 text-sm" data-testid="textarea-invoice-notes" /></label><Field label="Tax %" value={tax} onChange={setTax} type="number" testId="input-invoice-tax" /></div></div><div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><h2 className="font-display text-xl font-bold">Choose a look</h2><div className="mt-4 grid grid-cols-3 gap-2">{(['signal', 'ledger', 'plain'] as const).map((x) => <button type="button" key={x} onClick={() => setTemplate(x)} className={`rounded-xl border p-3 text-left ${template === x ? 'border-[hsl(var(--primary))] bg-[hsl(var(--secondary)/.6)]' : 'border-[hsl(var(--border))]'}`} data-testid={`button-template-${x}`}><span className={`mb-3 block h-1.5 rounded-full ${x === 'signal' ? 'bg-[hsl(var(--primary))]' : x === 'ledger' ? 'bg-[hsl(var(--accent))]' : 'bg-[hsl(var(--foreground))]'}`} /><span className="text-xs font-bold capitalize">{x}</span></button>)}</div></div></section><section className="lg:sticky lg:top-[96px] lg:self-start"><div className="mb-3 flex items-center justify-between"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))]">Live preview</p><Button variant="outline" onClick={exportPdf} testId="button-download-invoice"><Download size={15} /> Download PDF</Button></div><div className={`paper-shadow min-h-[620px] rounded-[.4rem] border border-[hsl(var(--border))] bg-[#fffdf8] p-7 text-[#173d3a] md:p-10 ${template === 'plain' ? 'font-sans' : ''}`} data-testid="preview-invoice"><div className="flex items-start justify-between border-b-2 border-[#173d3a] pb-9">{logo ? <img src={logo} alt="Uploaded business logo" className="max-h-14 max-w-[130px] object-contain" data-testid="img-invoice-logo" /> : <div><div className="mb-2 h-3 w-28 rounded bg-[#173d3a]" /><p className="text-xs text-[#55706b]">{business || 'Your business'}</p></div>}<div className="text-right"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[#55706b]">Invoice</p><p className="mt-2 text-sm font-bold">{number || 'INV-000'}</p></div></div><div className="flex justify-between gap-5 py-8 text-sm"><div><p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#55706b]">Billed to</p><p className="font-bold">{client || 'Client name'}</p><p className="mt-1 text-[#55706b]">{email}</p></div><div className="text-right text-xs"><p><span className="text-[#55706b]">Issued </span>{date}</p><p className="mt-2"><span className="text-[#55706b]">Due </span>{due}</p></div></div><div className="border-t border-[#b8cbc5] pt-3"><div className="mb-2 grid grid-cols-[1fr_55px_85px] gap-2 px-1 text-[10px] font-bold uppercase tracking-wider text-[#55706b]"><span>Item</span><span>Qty</span><span className="text-right">Amount</span></div>{items.map((item) => <div key={item.id} className="grid grid-cols-[1fr_55px_85px] gap-2 border-t border-[#dce5e0] py-4 text-sm"><span className="font-medium">{item.description || 'Line item'}</span><span>{item.qty || 0}</span><span className="text-right">${(Number(item.qty || 0) * Number(item.rate || 0)).toFixed(2)}</span></div>)}</div><div className="ml-auto mt-8 max-w-[225px] space-y-3 border-t border-[#b8cbc5] pt-4 text-sm"><div className="flex justify-between"><span className="text-[#55706b]">Subtotal</span><span>${subtotal.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-[#55706b]">Tax ({tax || 0}%)</span><span>${taxAmount.toFixed(2)}</span></div><div className="flex justify-between border-t-2 border-[#173d3a] pt-3 text-base font-bold"><span>Total due</span><span>${total.toFixed(2)}</span></div></div><p className="mt-16 border-t border-[#dce5e0] pt-4 text-xs text-[#55706b]">{notes}</p></div></section></div><InfoSection title="A good invoice answers the next question" intro="A clean invoice is less about looking official and more about removing uncertainty. Put the who, what, when, and how much where a client can find them in one glance." bullets={['Give each invoice a simple, memorable number so conversations stay easy.', 'Use a due date rather than “net 30” alone. Specific dates reduce back-and-forth.', 'Keep line items plainspoken. A client should understand what they are paying for without decoding your process.']} faq={[['Does the invoice save automatically?', 'The form lives in the current browser tab. Nothing is sent to a server, and closing the tab clears the draft unless you save the exported PDF yourself.'], ['Can I add a logo?', 'Yes. Choose an image from your device. It is read locally and shown only in the preview and exported file.'], ['How is tax calculated?', 'Tax is applied to the subtotal of quantity multiplied by rate for each line item. You can set the percentage to zero.']]} /></main></PageMeta>;
 }
 
-function InvoiceGenerator() {
+function InvoiceGeneratorLegacyWithCurrency() {
   const content = useOfficeToolkitContent();
   const [business, setBusiness] = useState('North Star Studio');
   const [client, setClient] = useState('Harbor & Pine');
@@ -286,6 +594,33 @@ function InvoiceGenerator() {
   return <PageMeta title="Invoice generator" description="Create a polished invoice with line items, tax, logo upload, live preview, and PDF export. Everything stays local."><main><ToolIntro id="invoice"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Local-only draft</span></ToolIntro><div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[.93fr_1.07fr] lg:px-8"><section className="space-y-5"><div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><div className="mb-5 flex items-center justify-between"><h2 className="font-display text-xl font-bold">Invoice details</h2><span className="font-mono-ui text-[10px] text-[hsl(var(--muted-foreground))]">01 / 03</span></div><div className="grid gap-4 sm:grid-cols-2"><Field label="From" value={business} onChange={setBusiness} testId="input-invoice-business" /><Field label="Bill to" value={client} onChange={setClient} testId="input-invoice-client" /><Field label="Client email" value={email} onChange={setEmail} type="email" testId="input-invoice-email" /><Field label="Invoice number" value={number} onChange={setNumber} testId="input-invoice-number" /><Field label="Issue date" value={date} onChange={setDate} type="date" testId="input-invoice-date" /><Field label="Due date" value={due} onChange={setDue} type="date" testId="input-invoice-due" /></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Currency</span><select value={currencyCode} onChange={(e) => setCurrencyCode(e.target.value)} className="h-10 w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid="select-invoice-currency">{content.currencies.map((item) => <option key={item.code} value={item.code}>{item.symbol} {item.code} · {item.name}</option>)}</select></label><Field label="Tax %" value={tax} onChange={setTax} type="number" testId="input-invoice-tax" /></div><div className="mt-5 flex flex-wrap items-center gap-3"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-[hsl(var(--primary)/.4)] px-3 py-2 text-xs font-bold text-[hsl(var(--primary))]"><Upload size={15} /> {logo ? 'Replace logo' : 'Add logo'}<input type="file" accept="image/*" className="sr-only" onChange={(e) => uploadLogo(e.target.files?.[0])} data-testid="input-invoice-logo" /></label>{logo && <button type="button" onClick={() => setLogo('')} className="text-xs font-bold text-[hsl(var(--muted-foreground))]" data-testid="button-remove-logo">Remove</button>}</div></div><div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><div className="mb-4 flex items-center justify-between"><h2 className="font-display text-xl font-bold">Line items</h2><Button variant="quiet" onClick={addItem} testId="button-add-line-item"><Plus size={15} /> Add line</Button></div><div className="hidden grid-cols-[1fr_70px_100px_32px] gap-2 px-1 pb-2 text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] sm:grid"><span>Description</span><span>Qty</span><span>Rate</span><span /></div><div className="space-y-2">{items.map((item, index) => <div key={item.id} className="grid gap-2 rounded-xl bg-[hsl(var(--muted)/.45)] p-2 sm:grid-cols-[1fr_70px_100px_32px] sm:bg-transparent sm:p-0"><input value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="What did you do?" className="h-10 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid={`input-line-description-${index}`} /><input value={item.qty} onChange={(e) => updateItem(item.id, 'qty', e.target.value)} type="number" min="0" className="h-10 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid={`input-line-qty-${index}`} /><input value={item.rate} onChange={(e) => updateItem(item.id, 'rate', e.target.value)} type="number" min="0" className="h-10 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid={`input-line-rate-${index}`} /><button type="button" onClick={() => setItems(items.filter((x) => x.id !== item.id))} className="grid size-10 place-items-center rounded-lg text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--destructive)/.1)] hover:text-[hsl(var(--destructive))]" aria-label="Remove line item" data-testid={`button-remove-line-${index}`}><Trash2 size={15} /></button></div>)}</div><div className="mt-5"><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Note</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="h-20 w-full resize-none rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] p-3 text-sm" data-testid="textarea-invoice-notes" /></label></div></div><div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><h2 className="font-display text-xl font-bold">Choose a look</h2><div className="mt-4 grid grid-cols-3 gap-2">{(['signal', 'ledger', 'plain'] as const).map((x) => <button type="button" key={x} onClick={() => setTemplate(x)} className={`rounded-xl border p-3 text-left ${template === x ? 'border-[hsl(var(--primary))] bg-[hsl(var(--secondary)/.6)]' : 'border-[hsl(var(--border))]'}`} data-testid={`button-template-${x}`}><span className={`mb-3 block h-1.5 rounded-full ${x === 'signal' ? 'bg-[hsl(var(--primary))]' : x === 'ledger' ? 'bg-[hsl(var(--accent))]' : 'bg-[hsl(var(--foreground))]'}`} /><span className="text-xs font-bold capitalize">{x}</span></button>)}</div></div></section><section className="lg:sticky lg:top-[96px] lg:self-start"><div className="mb-3 flex items-center justify-between"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))]">Live preview</p><Button variant="outline" onClick={exportPdf} testId="button-download-invoice"><Download size={15} /> Download PDF</Button></div><div className={`paper-shadow min-h-[620px] rounded-[.4rem] border border-[hsl(var(--border))] bg-[#fffdf8] p-7 text-[#173d3a] md:p-10 ${template === 'plain' ? 'font-sans' : ''}`} data-testid="preview-invoice"><div className="flex items-start justify-between border-b-2 border-[#173d3a] pb-9">{logo ? <img src={logo} alt="Uploaded business logo" className="max-h-14 max-w-[130px] object-contain" data-testid="img-invoice-logo" /> : <div><div className="mb-2 h-3 w-28 rounded bg-[#173d3a]" /><p className="text-xs text-[#55706b]">{business || 'Your business'}</p></div>}<div className="text-right"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[#55706b]">Invoice</p><p className="mt-2 text-sm font-bold">{number || 'INV-000'}</p></div></div><div className="flex justify-between gap-5 py-8 text-sm"><div><p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#55706b]">Billed to</p><p className="font-bold">{client || 'Client name'}</p><p className="mt-1 text-[#55706b]">{email}</p></div><div className="text-right text-xs"><p><span className="text-[#55706b]">Issued </span>{date}</p><p className="mt-2"><span className="text-[#55706b]">Due </span>{due}</p></div></div><div className="border-t border-[#b8cbc5] pt-3"><div className="mb-2 grid grid-cols-[1fr_55px_100px] gap-2 px-1 text-[10px] font-bold uppercase tracking-wider text-[#55706b]"><span>Item</span><span>Qty</span><span className="text-right">Amount</span></div>{items.map((item) => <div key={item.id} className="grid grid-cols-[1fr_55px_100px] gap-2 border-t border-[#dce5e0] py-4 text-sm"><span className="font-medium">{item.description || 'Line item'}</span><span>{item.qty || 0}</span><span className="text-right">{formatMoney(Number(item.qty || 0) * Number(item.rate || 0))}</span></div>)}</div><div className="ml-auto mt-8 max-w-[245px] space-y-3 border-t border-[#b8cbc5] pt-4 text-sm"><div className="flex justify-between"><span className="text-[#55706b]">Subtotal</span><span>{formatMoney(subtotal)}</span></div><div className="flex justify-between"><span className="text-[#55706b]">Tax ({tax || 0}%)</span><span>{formatMoney(taxAmount)}</span></div><div className="flex justify-between border-t-2 border-[#173d3a] pt-3 text-base font-bold"><span>Total due</span><span>{formatMoney(total)}</span></div></div><p className="mt-16 border-t border-[#dce5e0] pt-4 text-xs text-[#55706b]">{notes}</p></div></section></div><InfoSection title="A good invoice answers the next question" intro="A clean invoice is less about looking official and more about removing uncertainty. Put the who, what, when, and how much where a client can find them in one glance." bullets={['Give each invoice a simple, memorable number so conversations stay easy.', 'Use a due date rather than “net 30” alone. Specific dates reduce back-and-forth.', 'Keep line items plainspoken. A client should understand what they are paying for without decoding your process.']} faq={[['Does the invoice save automatically?', 'The form lives in the current browser tab. Nothing is sent to a server, and closing the tab clears the draft unless you save the exported PDF yourself.'], ['Can I add a logo?', 'Yes. Choose an image from your device. It is read locally and shown only in the preview and exported file.'], ['How is tax calculated?', 'Tax is applied to the subtotal of quantity multiplied by rate for each line item. You can set the percentage to zero.']]} /></main></PageMeta>;
 }
 
+function InvoiceGenerator() {
+  const content = useOfficeToolkitContent();
+  const [business, setBusiness] = useState('North Star Studio');
+  const [client, setClient] = useState('Harbor & Pine');
+  const [email, setEmail] = useState('hello@northstar.studio');
+  const [number, setNumber] = useState('INV-2025-014');
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [due, setDue] = useState('2025-06-30');
+  const [tax, setTax] = useState('8.25');
+  const [notes, setNotes] = useState('Thank you for working together.');
+  const [currencyCode, setCurrencyCode] = useState('INR');
+  const [template, setTemplate] = useState<'signal' | 'ledger' | 'plain'>('signal');
+  const [logo, setLogo] = useState('');
+  const [exportFormat, setExportFormat] = useState<'png' | 'jpg' | 'pdf'>('pdf');
+  const [items, setItems] = useState<LineItem[]>([{ id: 1, description: 'Brand strategy sprint', qty: '1', rate: '1250' }, { id: 2, description: 'Design system handoff', qty: '4', rate: '180' }]);
+  const currency = content.currencies.find((item) => item.code === currencyCode) ?? content.currencies[0];
+  const symbol = currency?.symbol ?? '₹';
+  const subtotal = useMemo(() => items.reduce((sum, x) => sum + Number(x.qty || 0) * Number(x.rate || 0), 0), [items]);
+  const taxAmount = subtotal * Number(tax || 0) / 100;
+  const total = subtotal + taxAmount;
+  const updateItem = (id: number, key: keyof LineItem, value: string) => setItems(items.map((item) => item.id === id ? { ...item, [key]: value } : item));
+  const exportInvoice = () => saveCanvas(renderInvoiceCanvas({ business, client, email, number, date, due, tax, notes, symbol, currencyName: currency?.name ?? currencyCode, items, subtotal, taxAmount, total }), number || 'invoice', exportFormat);
+  const uploadLogo = (file?: File) => { if (!file) return; const reader = new FileReader(); reader.onload = () => setLogo(String(reader.result)); reader.readAsDataURL(file); };
+
+  return <PageMeta title="Invoice generator" description="Create a polished invoice with line items, tax, logo upload, live preview, and PDF, JPG, or PNG export. Everything stays local."><main><ToolIntro id="invoice"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Local-only draft</span></ToolIntro><div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[.93fr_1.07fr] lg:px-8"><section className="space-y-5"><div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><div className="mb-5 flex items-center justify-between"><h2 className="font-display text-xl font-bold">Invoice details</h2><span className="font-mono-ui text-[10px] text-[hsl(var(--muted-foreground))]">01 / 03</span></div><div className="grid gap-4 sm:grid-cols-2"><Field label="From" value={business} onChange={setBusiness} testId="input-invoice-business" /><Field label="Bill to" value={client} onChange={setClient} testId="input-invoice-client" /><Field label="Client email" value={email} onChange={setEmail} type="email" testId="input-invoice-email" /><Field label="Invoice number" value={number} onChange={setNumber} testId="input-invoice-number" /><Field label="Issue date" value={date} onChange={setDate} type="date" testId="input-invoice-date" /><Field label="Due date" value={due} onChange={setDue} type="date" testId="input-invoice-due" /></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Currency</span><select value={currencyCode} onChange={(e) => setCurrencyCode(e.target.value)} className="h-10 w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid="select-invoice-currency">{content.currencies.map((item) => <option key={item.code} value={item.code}>{item.symbol} {item.code} · {item.name}</option>)}</select></label><Field label="Tax %" value={tax} onChange={setTax} type="number" testId="input-invoice-tax" /></div><div className="mt-5 flex flex-wrap items-center gap-3"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-[hsl(var(--primary)/.4)] px-3 py-2 text-xs font-bold text-[hsl(var(--primary))]"><Upload size={15} /> {logo ? 'Replace logo' : 'Add logo'}<input type="file" accept="image/*" className="sr-only" onChange={(e) => uploadLogo(e.target.files?.[0])} data-testid="input-invoice-logo" /></label>{logo && <button type="button" onClick={() => setLogo('')} className="text-xs font-bold text-[hsl(var(--muted-foreground))]" data-testid="button-remove-logo">Remove</button>}</div></div><div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><div className="mb-4 flex items-center justify-between"><h2 className="font-display text-xl font-bold">Line items</h2><Button variant="quiet" onClick={() => setItems([...items, { id: Date.now(), description: '', qty: '1', rate: '0' }])} testId="button-add-line-item"><Plus size={15} /> Add line</Button></div><div className="space-y-2">{items.map((item, index) => <div key={item.id} className="grid gap-2 rounded-xl bg-[hsl(var(--muted)/.45)] p-2 sm:grid-cols-[1fr_70px_100px_32px] sm:bg-transparent sm:p-0"><input value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="What did you do?" className="h-10 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid={`input-line-description-${index}`} /><input value={item.qty} onChange={(e) => updateItem(item.id, 'qty', e.target.value)} type="number" min="0" className="h-10 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid={`input-line-qty-${index}`} /><input value={item.rate} onChange={(e) => updateItem(item.id, 'rate', e.target.value)} type="number" min="0" className="h-10 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid={`input-line-rate-${index}`} /><button type="button" onClick={() => setItems(items.filter((x) => x.id !== item.id))} className="grid size-10 place-items-center rounded-lg text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--destructive)/.1)] hover:text-[hsl(var(--destructive))]" aria-label="Remove line item" data-testid={`button-remove-line-${index}`}><Trash2 size={15} /></button></div>)}</div><div className="mt-5"><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Note</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="h-20 w-full resize-none rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] p-3 text-sm" data-testid="textarea-invoice-notes" /></label></div></div><div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><h2 className="font-display text-xl font-bold">Choose a look</h2><div className="mt-4 grid grid-cols-3 gap-2">{(['signal', 'ledger', 'plain'] as const).map((x) => <button type="button" key={x} onClick={() => setTemplate(x)} className={`rounded-xl border p-3 text-left ${template === x ? 'border-[hsl(var(--primary))] bg-[hsl(var(--secondary)/.6)]' : 'border-[hsl(var(--border))]'}`} data-testid={`button-template-${x}`}><span className={`mb-3 block h-1.5 rounded-full ${x === 'signal' ? 'bg-[hsl(var(--primary))]' : x === 'ledger' ? 'bg-[hsl(var(--accent))]' : 'bg-[hsl(var(--foreground))]'}`} /><span className="text-xs font-bold capitalize">{x}</span></button>)}</div></div></section><section className="lg:sticky lg:top-[96px] lg:self-start"><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))]">Live preview</p><div className="flex items-center gap-2"><select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as 'png' | 'jpg' | 'pdf')} className="h-10 rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-2 text-xs font-bold" data-testid="select-invoice-export-format"><option value="pdf">PDF</option><option value="png">PNG</option><option value="jpg">JPG</option></select><Button variant="outline" onClick={exportInvoice} testId="button-download-invoice"><Download size={15} /> Download</Button></div></div><div className={`paper-shadow min-h-[620px] rounded-[.4rem] border border-[hsl(var(--border))] bg-[#fffdf8] p-7 text-[#173d3a] md:p-10 ${template === 'plain' ? 'font-sans' : ''}`} data-testid="preview-invoice"><div className="flex items-start justify-between border-b-2 border-[#173d3a] pb-9">{logo ? <img src={logo} alt="Uploaded business logo" className="max-h-14 max-w-[130px] object-contain" data-testid="img-invoice-logo" /> : <div><div className="mb-2 h-3 w-28 rounded bg-[#173d3a]" /><p className="text-xs text-[#55706b]">{business || 'Your business'}</p></div>}<div className="text-right"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[#55706b]">Invoice</p><p className="mt-2 text-sm font-bold">{number || 'INV-000'}</p></div></div><div className="flex justify-between gap-5 py-8 text-sm"><div><p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#55706b]">Billed to</p><p className="font-bold">{client || 'Client name'}</p><p className="mt-1 text-[#55706b]">{email}</p></div><div className="text-right text-xs"><p><span className="text-[#55706b]">Issued </span>{date}</p><p className="mt-2"><span className="text-[#55706b]">Due </span>{due}</p></div></div><div className="border-t border-[#b8cbc5] pt-3"><div className="mb-2 grid grid-cols-[1fr_55px_100px] gap-2 px-1 text-[10px] font-bold uppercase tracking-wider text-[#55706b]"><span>Item</span><span>Qty</span><span className="text-right">Amount</span></div>{items.map((item) => <div key={item.id} className="grid grid-cols-[1fr_55px_100px] gap-2 border-t border-[#dce5e0] py-4 text-sm"><span className="font-medium">{item.description || 'Line item'}</span><span>{item.qty || 0}</span><span className="text-right">{`${symbol}${(Number(item.qty || 0) * Number(item.rate || 0)).toFixed(2)}`}</span></div>)}</div><div className="ml-auto mt-8 max-w-[245px] space-y-3 border-t border-[#b8cbc5] pt-4 text-sm"><div className="flex justify-between"><span className="text-[#55706b]">Subtotal</span><span>{`${symbol}${subtotal.toFixed(2)}`}</span></div><div className="flex justify-between"><span className="text-[#55706b]">Tax ({tax || 0}%)</span><span>{`${symbol}${taxAmount.toFixed(2)}`}</span></div><div className="flex justify-between border-t-2 border-[#173d3a] pt-3 text-base font-bold"><span>Total due</span><span>{`${symbol}${total.toFixed(2)}`}</span></div></div><p className="mt-16 border-t border-[#dce5e0] pt-4 text-xs text-[#55706b]">{notes}</p></div></section></div><InfoSection title="A good invoice answers the next question" intro="A clean invoice is less about looking official and more about removing uncertainty. Put the who, what, when, and how much where a client can find them in one glance." bullets={['Give each invoice a simple, memorable number so conversations stay easy.', 'Use a due date rather than “net 30” alone. Specific dates reduce back-and-forth.', 'Keep line items plainspoken. A client should understand what they are paying for without decoding your process.']} faq={[['Does the invoice save automatically?', 'The form lives in the current browser tab. Nothing is sent to a server, and closing the tab clears the draft unless you save the exported PDF yourself.'], ['Can I add a logo?', 'Yes. Choose an image from your device. It is read locally and shown only in the preview and exported file.'], ['Which formats can I download?', 'Use the format selector above the preview to download a visual invoice as PDF, PNG, or JPG.']]} /></main></PageMeta>;
+}
+
 function InfoSection({ title, intro, bullets, faq }: { title: string; intro: string; bullets: string[]; faq: [string, string][] }) {
   return <section className="mx-auto mt-24 max-w-6xl border-t border-[hsl(var(--border))] px-5 py-16 lg:px-8"><div className="grid gap-12 lg:grid-cols-[.72fr_1.28fr]"><div><SectionHeading eyebrow="A little context" title={title} description={intro} /><ul className="mt-7 space-y-4">{bullets.map((b) => <li key={b} className="flex gap-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]"><Check size={16} className="mt-1 shrink-0 text-[hsl(var(--primary))]" />{b}</li>)}</ul></div><div><div className="mb-4 flex items-center gap-2 text-[hsl(var(--primary))]"><CircleHelp size={17} /><span className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em]">Questions, answered</span></div><FAQ items={faq} /></div></div></section>;
 }
@@ -306,7 +641,7 @@ function About() {
   return <PageMeta title="About Office Toolkit" description="Learn why Office Toolkit is a local-first set of small tools for getting important work done."><main><section className="border-b border-[hsl(var(--border))]"><div className="mx-auto max-w-6xl px-5 pb-20 pt-16 lg:px-8 lg:pb-28 lg:pt-24"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">The idea</p><h1 className="mt-5 max-w-3xl font-display text-5xl font-bold leading-[.96] tracking-[-.06em] md:text-7xl">Work has enough<br /><span className="text-[hsl(var(--primary))]">friction already.</span></h1><p className="mt-7 max-w-xl text-lg leading-8 text-[hsl(var(--muted-foreground))]">Office Toolkit is a collection of focused, browser-first tools for the jobs that are too important to ignore and too small to deserve a new account.</p></div></section><section className="mx-auto grid max-w-6xl gap-14 px-5 py-20 lg:grid-cols-[.7fr_1.3fr] lg:px-8 lg:py-28"><SectionHeading eyebrow="Our point of view" title="Useful beats impressive." /><div className="space-y-8 text-base leading-8 text-[hsl(var(--muted-foreground))]"><p>We made Office Toolkit for the edge of the workday: the invoice you forgot to send, the resume you need to tidy before lunch, the signature waiting at the bottom of a PDF.</p><p>Each tool is intentionally narrow. It does one job, gives you a usable file, and gets out of the way. There are no dashboards to maintain and no upgrade prompts hovering over the finish line.</p><div className="grid gap-4 pt-4 sm:grid-cols-2"><div className="rounded-2xl bg-[hsl(var(--secondary)/.6)] p-6"><ShieldCheck className="text-[hsl(var(--primary))]" /><h3 className="mt-5 font-display text-xl font-bold text-[hsl(var(--foreground))]">Private by architecture</h3><p className="mt-2 text-sm leading-6">Your input is processed on your device. Local-first is not a badge; it is the default.</p></div><div className="rounded-2xl bg-[hsl(var(--accent)/.24)] p-6"><Zap className="text-[hsl(var(--accent-foreground))]" /><h3 className="mt-5 font-display text-xl font-bold text-[hsl(var(--foreground))]">Fast by respect</h3><p className="mt-2 text-sm leading-6">Small tasks deserve small interfaces. We keep the path from blank page to finished file short.</p></div></div></div></section><section className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"><div className="mx-auto max-w-6xl px-5 py-16 lg:px-8"><div className="flex flex-col justify-between gap-8 md:flex-row md:items-end"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.18em] text-[hsl(var(--accent))]">Keep in touch with the essentials</p><h2 className="mt-4 max-w-xl font-display text-4xl font-bold leading-[1] tracking-[-.05em]">Open a tool. Finish a thing. Keep moving.</h2></div><Link href="/" data-testid="link-about-tools" className="inline-flex items-center gap-2 text-sm font-bold text-[hsl(var(--accent))]">Browse the toolkit <ArrowRight size={16} /></Link></div></div></section></main></PageMeta>;
 }
 
-function ResumeFormatter() {
+function ResumeFormatterLegacyWithTemplates() {
   const content = useOfficeToolkitContent();
   const [tab, setTab] = useState<'plain' | 'structured'>('plain');
   const [templateId, setTemplateId] = useState('signal');
@@ -318,6 +653,18 @@ function ResumeFormatter() {
   const plainText = `${data.name}\n${data.role}\n${data.email} · ${data.phone} · ${data.location}\n\nPROFILE\n${data.summary}\n\nEXPERIENCE\n${data.experience}\n\nEDUCATION\n${data.education}\n\nSKILLS\n${data.skills}`;
   const accent = template?.accent ?? '#c66d35';
   return <PageMeta title="Resume formatter" description="Format a plain-text resume into a clear, ATS-friendly document with PDF and JSON export."><main><ToolIntro id="resume"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Your draft stays on this device</span></ToolIntro><div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[.9fr_1.1fr] lg:px-8"><section className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><div className="flex items-center justify-between"><div className="flex rounded-xl bg-[hsl(var(--muted))] p-1"><button type="button" onClick={() => setTab('plain')} className={`rounded-lg px-3 py-2 text-xs font-bold ${tab === 'plain' ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid="button-resume-tab-plain"><FileText size={14} className="mr-1.5 inline" /> Plain text</button><button type="button" onClick={() => setTab('structured')} className={`rounded-lg px-3 py-2 text-xs font-bold ${tab === 'structured' ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid="button-resume-tab-structured"><LayoutTemplate size={14} className="mr-1.5 inline" /> Structured</button></div><span className="font-mono-ui text-[10px] text-[hsl(var(--muted-foreground))]">02 / 02</span></div>{tab === 'plain' ? <div className="mt-5"><label className="mb-2 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Paste or write your resume</label><textarea value={plainText} onChange={(e) => { const lines = e.target.value.split('\n'); update('name', lines[0] || ''); update('role', lines[1] || ''); update('email', lines[2]?.split('·')[0]?.trim() || ''); update('summary', e.target.value.includes('PROFILE') ? e.target.value.split('PROFILE')[1]?.split('EXPERIENCE')[0]?.trim() || '' : data.summary); update('experience', e.target.value.includes('EXPERIENCE') ? e.target.value.split('EXPERIENCE')[1]?.split('EDUCATION')[0]?.trim() || '' : data.experience); update('education', e.target.value.includes('EDUCATION') ? e.target.value.split('EDUCATION')[1]?.split('SKILLS')[0]?.trim() || '' : data.education); update('skills', e.target.value.includes('SKILLS') ? e.target.value.split('SKILLS')[1]?.trim() || '' : data.skills); }} className="min-h-[560px] w-full resize-y rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] p-4 font-mono-ui text-xs leading-6 outline-none focus:ring-2 focus:ring-[hsl(var(--ring)/.25)]" data-testid="textarea-resume-plain" /><p className="mt-2 flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]"><Sparkles size={13} className="text-[hsl(var(--accent-foreground))]" /> Tip: use clear section labels for the easiest parse.</p></div> : <div className="mt-5 space-y-4">{[['name', 'Name'], ['role', 'Headline'], ['email', 'Email'], ['phone', 'Phone'], ['location', 'Location']].map(([key, label]) => <Field key={key} label={label} value={data[key as keyof ResumeData]} onChange={(v) => update(key as keyof ResumeData, v)} testId={`input-resume-${key}`} />)}<label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Profile</span><textarea value={data.summary} onChange={(e) => update('summary', e.target.value)} className="h-24 w-full resize-none rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] p-3 text-sm" data-testid="textarea-resume-summary" /></label><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Experience</span><textarea value={data.experience} onChange={(e) => update('experience', e.target.value)} className="h-40 w-full resize-none rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] p-3 text-sm leading-6" data-testid="textarea-resume-experience" /></label><Field label="Education" value={data.education} onChange={(v) => update('education', v)} testId="input-resume-education" /><Field label="Skills" value={data.skills} onChange={(v) => update('skills', v)} testId="input-resume-skills" /></div>}</section><section className="lg:sticky lg:top-[96px] lg:self-start"><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))]">Formatted preview</p><div className="flex gap-2"><Button variant="outline" onClick={exportJson} testId="button-download-resume-json"><FileJson size={15} /> JSON</Button><Button onClick={exportPdf} testId="button-download-resume-pdf"><Download size={15} /> PDF</Button></div></div><div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">{content.resumeTemplates.map((item) => <button type="button" key={item.id} onClick={() => setTemplateId(item.id)} className={`rounded-xl border p-3 text-left ${template?.id === item.id ? 'border-[hsl(var(--primary))] bg-[hsl(var(--secondary)/.6)]' : 'border-[hsl(var(--border))]'}`} data-testid={`button-resume-template-${item.id}`}><span className="mb-2 block h-1.5 rounded-full" style={{ backgroundColor: item.accent }} /><span className="block text-xs font-bold">{item.name}</span><span className="mt-1 block text-[10px] leading-4 text-[hsl(var(--muted-foreground))]">{item.description}</span></button>)}</div><div className="paper-shadow min-h-[680px] rounded-[.4rem] border border-[hsl(var(--border))] bg-[#fffdf8] p-7 text-[#173d3a] md:p-10" data-testid="preview-resume"><div className="border-b-2 pb-6" style={{ borderColor: '#173d3a' }}><h2 className="font-display text-4xl font-bold tracking-[-.06em]">{data.name || 'Your name'}</h2><p className="mt-2 font-mono-ui text-[10px] font-bold uppercase tracking-[.13em]" style={{ color: accent }}>{data.role || 'Your headline'}</p><p className="mt-4 text-xs text-[#55706b]">{[data.email, data.phone, data.location].filter(Boolean).join('  ·  ')}</p></div><div className="space-y-6 pt-7 text-sm"><div><h3 className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em]" style={{ color: accent }}>Profile</h3><p className="mt-2 leading-6">{data.summary}</p></div><div><h3 className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em]" style={{ color: accent }}>Experience</h3><div className="mt-2 whitespace-pre-line leading-6">{data.experience}</div></div><div><h3 className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em]" style={{ color: accent }}>Education</h3><p className="mt-2 leading-6">{data.education}</p></div><div><h3 className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em]" style={{ color: accent }}>Skills</h3><p className="mt-2 leading-6">{data.skills}</p></div></div></div></section></div><InfoSection title="Formatting is a kindness to the reader" intro="Hiring teams skim. A good resume makes the important parts easy to find, then earns a closer look with specific, credible detail." bullets={['Start bullets with a strong verb and include the result when you can.', 'Keep job titles, companies, and dates visually consistent across the page.', 'Use the plain-text view for editing, then switch to structured mode when you want control over each section.']} faq={[['Is this ATS-friendly?', 'The preview uses a simple hierarchy, standard section labels, and readable text rather than columns or decorative graphics. That makes it easier for many applicant tracking systems to parse, though no tool can guarantee a particular employer’s software.'], ['What does JSON export do?', 'It gives you a structured copy of your resume data. Keep it as a backup, move it into another tool, or use it as the source for future versions.'], ['Does the formatter send my resume anywhere?', 'No. The content stays in this browser tab. Exported files are created directly on your device.']]} /></main></PageMeta>;
+}
+
+function ResumeFormatter() {
+  const content = useOfficeToolkitContent();
+  const [data, setData] = useState<ResumeData>({ name: 'Alex Morgan', role: 'Product designer', email: 'alex@example.com', phone: '+91 98765 43210', location: 'Bengaluru, India', summary: 'Product designer turning complex workflows into calm, useful experiences.', experience: 'Lead product designer · North Star Studio · 2022—Now\nDesigned systems used by 40k+ people and partnered closely with engineering.', education: 'B.Des. Communication Design · Srishti Institute · 2020', skills: 'Product strategy · Figma · Prototyping · Design systems · Research' });
+  const [templateId, setTemplateId] = useState('resume-1');
+  const [exportFormat, setExportFormat] = useState<'png' | 'jpg' | 'pdf'>('pdf');
+  const template = content.resumeTemplates.find((item) => item.id === templateId) ?? content.resumeTemplates[0];
+  const update = (key: keyof ResumeData, value: string) => setData((current) => ({ ...current, [key]: value }));
+  const exportResume = () => saveCanvas(renderResumeCanvas(data, template?.accent ?? '#174f4a'), 'office-resume', exportFormat);
+  const fields: [keyof ResumeData, string, string][] = [['name', 'Name', 'Your name'], ['role', 'Headline', 'What do you do?'], ['email', 'Email', 'you@example.com'], ['phone', 'Phone', '+91 ...'], ['location', 'Location', 'City, country'], ['summary', 'Summary', 'Two or three lines about your work'], ['experience', 'Experience', 'Role, company, dates, and impact'], ['education', 'Education', 'Degree, school, and year'], ['skills', 'Skills', 'Separate skills with ·']];
+  return <PageMeta title="Resume formatter" description="Format a clear resume with 60 layout variations and export it as PDF, PNG, or JPG. Private and instant in your browser."><main><ToolIntro id="resume"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Local-only draft</span></ToolIntro><div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[.8fr_1.2fr] lg:px-8"><section className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6"><div className="flex items-start justify-between gap-4"><div><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--primary))]">Your content</p><h2 className="mt-2 font-display text-2xl font-bold">Make the good stuff easy to find.</h2></div><span className="font-mono-ui text-[10px] text-[hsl(var(--muted-foreground))]">01 / 02</span></div><div className="mt-6 space-y-4">{fields.map(([key, label, placeholder]) => <label key={key} className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">{label}</span>{['summary', 'experience', 'education', 'skills'].includes(key) ? <textarea value={data[key]} onChange={(e) => update(key, e.target.value)} placeholder={placeholder} className="min-h-20 w-full resize-y rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] p-3 text-sm leading-6" data-testid={`input-resume-${key}`} /> : <input value={data[key]} onChange={(e) => update(key, e.target.value)} placeholder={placeholder} className="h-10 w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid={`input-resume-${key}`} />}</label>)}</div></section><section className="lg:sticky lg:top-[96px] lg:self-start"><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))]">Live preview</p><div className="flex items-center gap-2"><select value={template?.id ?? ''} onChange={(e) => setTemplateId(e.target.value)} className="h-10 max-w-[170px] rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-2 text-xs font-bold" aria-label="Resume template" data-testid="select-resume-template">{content.resumeTemplates.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as 'png' | 'jpg' | 'pdf')} className="h-10 rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-2 text-xs font-bold" data-testid="select-resume-export-format"><option value="pdf">PDF</option><option value="png">PNG</option><option value="jpg">JPG</option></select><Button variant="outline" onClick={exportResume} testId="button-download-resume"><Download size={15} /> Download</Button></div></div><div className="paper-shadow min-h-[700px] rounded-[.35rem] border border-[hsl(var(--border))] bg-[#fffdf8] p-7 text-[#173d3a] md:p-10" data-testid="preview-resume"><div className="border-b-2 pb-7" style={{ borderColor: template?.accent ?? '#174f4a' }}><h1 className="font-display text-4xl font-bold tracking-[-.05em] md:text-5xl">{data.name || 'Your name'}</h1><p className="mt-2 font-mono-ui text-xs font-bold uppercase tracking-[.14em]" style={{ color: template?.accent }}>{data.role || 'Your headline'}</p><p className="mt-3 text-xs text-[#55706b]">{[data.email, data.phone, data.location].filter(Boolean).join('  ·  ')}</p></div><div className="mt-8 space-y-7">{[['Profile', data.summary], ['Experience', data.experience], ['Education', data.education], ['Skills', data.skills]].map(([label, value]) => <section key={label}><h2 className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em]" style={{ color: template?.accent }}>{label}</h2><p className="mt-2 whitespace-pre-line text-sm leading-6 text-[#31514d]">{value || 'Add your content here.'}</p></section>)}</div></div><div className="mt-3 flex items-center justify-between text-xs text-[hsl(var(--muted-foreground))]"><span>{content.resumeTemplates.length} layout variations available</span><span>PDF · PNG · JPG</span></div></section></div><InfoSection title="A resume is a reading experience" intro="The strongest resume makes the next useful detail obvious. Start with your evidence, then choose a layout that gives it room to breathe." bullets={['Lead with outcomes, not only responsibilities. Numbers and specific changes make work memorable.', 'Use the template as a hierarchy, not decoration. The reader should know where to look next.', 'Export a PDF for applications and an image when you need a quick visual preview.']} faq={[['How many templates are available?', 'Office Toolkit includes 60 reusable resume layout variations with different accent palettes and hierarchy options.'], ['Is my resume uploaded?', 'No. Your content stays in this browser tab while you edit and export.'], ['Which download formats are available?', 'You can download the live resume as PDF, PNG, or JPG.']]} /></main></PageMeta>;
 }
 
 function Router() {
