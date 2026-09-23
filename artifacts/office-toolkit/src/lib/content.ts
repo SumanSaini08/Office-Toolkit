@@ -1,3 +1,5 @@
+export type BlogFaq = { question: string; answer: string };
+
 export type BlogPost = {
   id: string;
   slug: string;
@@ -7,6 +9,15 @@ export type BlogPost = {
   readTime: string;
   publishedAt: string;
   content: string;
+  author?: string;
+  tags?: string[];
+  imageUrl?: string;
+  imageAlt?: string;
+  pdfUrl?: string;
+  coverEnabled?: boolean;
+  faq?: BlogFaq[];
+  seo?: { metaTitle?: string; metaDescription?: string };
+  published?: boolean;
 };
 
 export type SignatureTemplate = {
@@ -14,13 +25,6 @@ export type SignatureTemplate = {
   name: string;
   font: string;
   description: string;
-};
-
-export type ResumeTemplate = {
-  id: string;
-  name: string;
-  description: string;
-  accent: string;
 };
 
 export type CurrencyOption = {
@@ -32,24 +36,10 @@ export type CurrencyOption = {
 export type OfficeToolkitContent = {
   blogPosts: BlogPost[];
   signatureTemplates: SignatureTemplate[];
-  resumeTemplates: ResumeTemplate[];
   currencies: CurrencyOption[];
 };
 
 import { useEffect, useState } from "react";
-
-const resumeAccentPalette = ["#c66d35", "#174f4a", "#8d5a9b", "#b36b21", "#1d4ed8", "#be185d", "#0f766e", "#6d28d9"];
-const resumeTemplateNames = ["Signal", "Classic", "Studio", "Compact", "Ledger", "Editorial", "Grid", "Portfolio", "Focus", "Modern"];
-export const generatedResumeTemplates: ResumeTemplate[] = Array.from({ length: 60 }, (_, index) => {
-  const family = resumeTemplateNames[index % resumeTemplateNames.length];
-  const number = Math.floor(index / resumeTemplateNames.length) + 1;
-  return {
-    id: `resume-${index + 1}`,
-    name: number === 1 ? family : `${family} ${number}`,
-    description: number % 2 === 0 ? "Balanced hierarchy with a confident accent" : "Clear sections with an easy reading path",
-    accent: resumeAccentPalette[index % resumeAccentPalette.length],
-  };
-});
 
 const signatureFamilies = [
   ["Cursive", "cursive", "A fluid, handwritten feel"],
@@ -64,6 +54,21 @@ export const generatedSignatureTemplates: SignatureTemplate[] = Array.from({ len
   const number = Math.floor(index / signatureFamilies.length) + 1;
   return { id: `signature-${index + 1}`, name: number === 1 ? family : `${family} ${number}`, font, description };
 });
+
+export const professionalSignatureFonts = [
+  ["Great Vibes", "Great Vibes, cursive", "Graceful, flowing calligraphy"],
+  ["Dancing Script", "Dancing Script, cursive", "Playful yet refined handwriting"],
+  ["Allura", "Allura, cursive", "Elegant slim script"],
+  ["Pacifico", "Pacifico, cursive", "Warm rounded signature"],
+  ["Sacramento", "Sacramento, cursive", "Light and airy cursive"],
+  ["Parisienne", "Parisienne, cursive", "Sophisticated calligraphic"],
+  ["Playball", "Playball, cursive", "Bold sporting script"],
+  ["Tangerine", "Tangerine, cursive", "Intricate elegant flourishes"],
+  ["Alex Brush", "Alex Brush, cursive", "Smooth connected brushstroke"],
+  ["Italianno", "Italianno, cursive", "Refined flowing italic"],
+  ["Eagle Lake", "Eagle Lake, cursive", "Distinctive handwritten stroke"],
+  ["Mrs Saint Delafield", "Mrs Saint Delafield, cursive", "Delicate formal calligraphy"],
+] as const;
 
 export const fallbackContent: OfficeToolkitContent = {
   blogPosts: [
@@ -99,7 +104,6 @@ export const fallbackContent: OfficeToolkitContent = {
     },
   ],
   signatureTemplates: generatedSignatureTemplates,
-  resumeTemplates: generatedResumeTemplates,
   currencies: [
     { code: "INR", symbol: "₹", name: "Indian Rupee" },
     { code: "USD", symbol: "$", name: "US Dollar" },
@@ -126,7 +130,6 @@ export function useOfficeToolkitContent() {
           ...remote,
           blogPosts: remote.blogPosts ?? fallbackContent.blogPosts,
           signatureTemplates: remote.signatureTemplates ?? fallbackContent.signatureTemplates,
-          resumeTemplates: remote.resumeTemplates ?? fallbackContent.resumeTemplates,
           currencies: remote.currencies ?? fallbackContent.currencies,
         });
       })
@@ -150,6 +153,7 @@ export async function fetchOfficeToolkitContent() {
 export async function saveOfficeToolkitContent(content: OfficeToolkitContent) {
   const response = await fetch("/api/content", {
     method: "PUT",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(content),
   });

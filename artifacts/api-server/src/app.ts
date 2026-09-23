@@ -30,6 +30,13 @@ app.use(cors({ credentials: true, origin: true }));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.raw({
+  type: (request) => {
+    const contentType = String(request.headers["content-type"] ?? "").toLowerCase();
+    return !contentType.startsWith("application/json") && !contentType.startsWith("application/x-www-form-urlencoded") && !contentType.includes("multipart/form-data");
+  },
+  limit: "25mb",
+}));
 
 app.use("/api", router);
 

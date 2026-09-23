@@ -1,6 +1,10 @@
 import { Router, type IRouter } from "express";
-import { ReplitConnectors } from "@replit/connectors-sdk";
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+export type BlogFaq = { question: string; answer: string };
 
 export type BlogPost = {
   id: string;
@@ -11,6 +15,14 @@ export type BlogPost = {
   readTime: string;
   publishedAt: string;
   content: string;
+  author?: string;
+  tags?: string[];
+  imageUrl?: string;
+  pdfUrl?: string;
+  coverEnabled?: boolean;
+  faq?: BlogFaq[];
+  seo?: { metaTitle?: string; metaDescription?: string };
+  published?: boolean;
 };
 
 export type SignatureTemplate = {
@@ -18,13 +30,6 @@ export type SignatureTemplate = {
   name: string;
   font: string;
   description: string;
-};
-
-export type ResumeTemplate = {
-  id: string;
-  name: string;
-  description: string;
-  accent: string;
 };
 
 export type CurrencyOption = {
@@ -36,22 +41,9 @@ export type CurrencyOption = {
 export type OfficeToolkitContent = {
   blogPosts: BlogPost[];
   signatureTemplates: SignatureTemplate[];
-  resumeTemplates: ResumeTemplate[];
   currencies: CurrencyOption[];
 };
 
-const resumeAccentPalette = ["#c66d35", "#174f4a", "#8d5a9b", "#b36b21", "#1d4ed8", "#be185d", "#0f766e", "#6d28d9"];
-const resumeTemplateNames = ["Signal", "Classic", "Studio", "Compact", "Ledger", "Editorial", "Grid", "Portfolio", "Focus", "Modern"];
-const generatedResumeTemplates: ResumeTemplate[] = Array.from({ length: 60 }, (_, index) => {
-  const family = resumeTemplateNames[index % resumeTemplateNames.length];
-  const number = Math.floor(index / resumeTemplateNames.length) + 1;
-  return {
-    id: `resume-${index + 1}`,
-    name: number === 1 ? family : `${family} ${number}`,
-    description: number % 2 === 0 ? "Balanced hierarchy with a confident accent" : "Clear sections with an easy reading path",
-    accent: resumeAccentPalette[index % resumeAccentPalette.length],
-  };
-});
 const signatureFamilies = [
   ["Cursive", "cursive", "A fluid, handwritten feel"],
   ["Classic", "serif", "A confident formal line"],
@@ -106,7 +98,6 @@ export const defaultContent: OfficeToolkitContent = {
     },
   ],
   signatureTemplates: generatedSignatureTemplates,
-  resumeTemplates: generatedResumeTemplates,
   currencies: [
     { code: "INR", symbol: "₹", name: "Indian Rupee" },
     { code: "USD", symbol: "$", name: "US Dollar" },
@@ -120,6 +111,13 @@ export const defaultContent: OfficeToolkitContent = {
 const bucket = "office-toolkit";
 const objectPath = "content.json";
 const adminCookie = "office_toolkit_admin";
+
+// Local disk store: source of truth so saves survive restarts even when Supabase is unreachable.
+const localDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../data");
+const localPath = path.join(localDir, objectPath);
+
+// After a network failure, skip remote calls for a short window so admin actions stay fast.
+let supabaseUnavailableUntil = 0;
 
 function getSessionSecret() {
   const secret = process.env.SESSION_SECRET;
@@ -154,26 +152,80 @@ function isAdmin(request: { headers: { cookie?: string } }) {
   }
 }
 
-function passwordsMatch(input: unknown) {
-  const configured = process.env.ADMIN_PASSWORD;
+function passwordsMatch(configured: string | undefined, input: unknown) {
   if (typeof input !== "string" || !configured) return false;
   const inputHash = createHash("sha256").update(input).digest();
   const configuredHash = createHash("sha256").update(configured).digest();
   return timingSafeEqual(inputHash, configuredHash);
 }
 
-async function storageRequest(
-  path: string,
-  init?: { method?: string; headers?: Record<string, string>; body?: string },
-) {
-  const connectors = new ReplitConnectors();
-  return connectors.proxy("supabase", path, init);
+async function readStoredPassword(): Promise<string | undefined> {
+  try {
+    const response = await storageRequest(
+      `/storage/v1/object/${bucket}/admin-password.json`,
+    );
+    if (!response.ok) return undefined;
+    const parsed = (await response.json()) as { password?: unknown };
+    return typeof parsed.password === "string" && parsed.password ? parsed.password : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
-function mergeResumeTemplates(existing?: ResumeTemplate[]) {
-  if (!existing || existing.length >= 50) return existing ?? generatedResumeTemplates;
-  const ids = new Set(existing.map((item) => item.id));
-  return [...existing, ...generatedResumeTemplates.filter((item) => !ids.has(item.id))];
+async function resolveAdminPassword(): Promise<string | undefined> {
+  const stored = await readStoredPassword();
+  return stored || process.env.ADMIN_PASSWORD;
+}
+
+async function storeAdminPassword(password: string) {
+  const response = await storageRequest(
+    `/storage/v1/object/${bucket}/admin-password.json`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-upsert": "true",
+      },
+      body: JSON.stringify({ password }),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Admin password storage returned ${response.status}`);
+  }
+}
+
+function randomTempPassword() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  const bytes = randomBytes(18);
+  return Array.from(bytes, (byte) => chars[byte % chars.length]).join("");
+}
+
+async function storageRequest(
+  path: string,
+  init?: { method?: string; headers?: Record<string, string>; body?: string | Uint8Array },
+) {
+  if (Date.now() < supabaseUnavailableUntil) {
+    throw new Error("Supabase is temporarily unavailable (retry in a moment)");
+  }
+  const base = process.env.SUPABASE_URL?.replace(/\/+$/, "");
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!base || !key) throw new Error("SUPABASE_URL and SUPABASE_SECRET_KEY are not configured");
+  try {
+    const response = await fetch(`${base}${path}`, {
+      method: init?.method ?? "GET",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        apikey: key,
+        ...init?.headers,
+      },
+      body: init?.body,
+      signal: AbortSignal.timeout(init?.body ? 8000 : 5000),
+    });
+    return response;
+  } catch (error) {
+    supabaseUnavailableUntil = Date.now() + 30_000;
+    throw error;
+  }
 }
 
 function mergeSignatureTemplates(existing?: SignatureTemplate[]) {
@@ -182,41 +234,85 @@ function mergeSignatureTemplates(existing?: SignatureTemplate[]) {
   return [...existing, ...generatedSignatureTemplates.filter((item) => !ids.has(item.id))];
 }
 
-async function readContent(): Promise<OfficeToolkitContent> {
-  const response = await storageRequest(
-    `/storage/v1/object/${bucket}/${objectPath}`,
-  );
-  if (response.ok) {
+function isValidPost(value: unknown): value is BlogPost {
+  return Boolean(value && typeof value === "object" && typeof (value as BlogPost).id === "string" && typeof (value as BlogPost).title === "string");
+}
+
+function normalizeContent(parsed: Partial<OfficeToolkitContent>): OfficeToolkitContent {
+  return {
+    ...defaultContent,
+    ...parsed,
+    blogPosts: (Array.isArray(parsed.blogPosts) ? parsed.blogPosts : defaultContent.blogPosts).filter(isValidPost),
+    signatureTemplates: mergeSignatureTemplates(parsed.signatureTemplates),
+    currencies: parsed.currencies ?? defaultContent.currencies,
+  };
+}
+
+async function writeLocalContent(content: OfficeToolkitContent) {
+  await fs.mkdir(localDir, { recursive: true });
+  const tmpPath = `${localPath}.${process.pid}.tmp`;
+  await fs.writeFile(tmpPath, JSON.stringify(content), "utf8");
+  await fs.rename(tmpPath, localPath);
+}
+
+async function tryImportFromSupabase(): Promise<OfficeToolkitContent | undefined> {
+  try {
+    const response = await storageRequest(
+      `/storage/v1/object/${bucket}/${objectPath}`,
+    );
+    if (!response.ok) {
+      supabaseUnavailableUntil = Date.now() + 30_000;
+      return undefined;
+    }
     const parsed = (await response.json()) as Partial<OfficeToolkitContent>;
-    return {
-      ...defaultContent,
-      ...parsed,
-      blogPosts: parsed.blogPosts ?? defaultContent.blogPosts,
-      signatureTemplates: mergeSignatureTemplates(parsed.signatureTemplates),
-      resumeTemplates: mergeResumeTemplates(parsed.resumeTemplates),
-      currencies: parsed.currencies ?? defaultContent.currencies,
-    };
+    const merged = normalizeContent(parsed);
+    await writeLocalContent(merged);
+    return merged;
+  } catch {
+    return undefined;
+  }
+}
+
+async function readContent(): Promise<OfficeToolkitContent> {
+  try {
+    const raw = await fs.readFile(localPath, "utf8");
+    return normalizeContent(JSON.parse(raw) as Partial<OfficeToolkitContent>);
+  } catch {
+    // Local store missing (first run or reset) - fall through to import, then defaults.
   }
 
-  await writeContent(defaultContent);
-  return defaultContent;
+  const online = await tryImportFromSupabase();
+  if (online) return online;
+  const seeded = normalizeContent({});
+  await writeLocalContent(seeded).catch(() => undefined);
+  return seeded;
+}
+
+async function syncBackupToSupabase(content: OfficeToolkitContent) {
+  try {
+    await storageRequest(
+      `/storage/v1/object/${bucket}/${objectPath}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-upsert": "true",
+        },
+        body: JSON.stringify(content),
+      },
+    );
+  } catch {
+    // Backup is best-effort: local disk save already succeeded.
+  }
 }
 
 async function writeContent(content: OfficeToolkitContent) {
-  const response = await storageRequest(
-    `/storage/v1/object/${bucket}/${objectPath}`,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "x-upsert": "true",
-      },
-      body: JSON.stringify(content),
-    },
-  );
-  if (!response.ok) {
-    throw new Error(`Supabase content storage returned ${response.status}`);
-  }
+  const safe = {
+    ...content,
+    blogPosts: (Array.isArray(content.blogPosts) ? content.blogPosts : []).filter(isValidPost),
+  };
+  await writeLocalContent(safe);
+  void syncBackupToSupabase(safe);
 }
 
 const router: IRouter = Router();
@@ -236,12 +332,13 @@ router.get("/admin/session", (req, res) => {
   res.json({ authenticated: isAdmin(req) });
 });
 
-router.post("/admin/login", (req, res) => {
-  if (!process.env.ADMIN_PASSWORD) {
+router.post("/admin/login", async (req, res) => {
+  const configured = await resolveAdminPassword();
+  if (!configured) {
     res.status(503).json({ error: "Admin password is not configured." });
     return;
   }
-  if (!passwordsMatch(req.body?.password)) {
+  if (!passwordsMatch(configured, req.body?.password)) {
     res.status(401).json({ error: "That password is not correct." });
     return;
   }
@@ -258,6 +355,93 @@ router.post("/admin/login", (req, res) => {
 router.post("/admin/logout", (_req, res) => {
   res.clearCookie(adminCookie, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
   res.json({ authenticated: false });
+});
+
+router.post("/admin/password", async (req, res) => {
+  if (!isAdmin(req)) {
+    res.status(401).json({ error: "Admin login required." });
+    return;
+  }
+  const configured = await resolveAdminPassword();
+  if (!configured) {
+    res.status(503).json({ error: "Admin password is not configured." });
+    return;
+  }
+  const { current, next } = req.body ?? {};
+  if (!passwordsMatch(configured, current)) {
+    res.status(401).json({ error: "The current password is not correct." });
+    return;
+  }
+  if (typeof next !== "string" || next.length < 6) {
+    res.status(400).json({ error: "New password must be at least 6 characters." });
+    return;
+  }
+  if (passwordsMatch(configured, next)) {
+    res.status(400).json({ error: "New password must be different from the current one." });
+    return;
+  }
+  try {
+    await storeAdminPassword(next);
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(502).json({
+      error: "Could not save the new password.",
+      detail: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+router.post("/admin/reset", async (_req, res) => {
+  const temp = randomTempPassword();
+  try {
+    await storeAdminPassword(temp);
+    res.json({ ok: true, tempPassword: temp });
+  } catch (error) {
+    res.status(502).json({
+      error: "Could not reset the password.",
+      detail: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+router.post("/admin/upload", async (req, res) => {
+  if (!isAdmin(req)) {
+    res.status(401).json({ error: "Admin login required." });
+    return;
+  }
+  try {
+    const bytes = req.body;
+    if (!Buffer.isBuffer(bytes) || bytes.length === 0) {
+      res.status(400).json({ error: "No file data received." });
+      return;
+    }
+    const base = process.env.SUPABASE_URL?.replace(/\/+$/, "") ?? "";
+    const rawName = req.headers["x-file-name"] ? decodeURIComponent(String(req.headers["x-file-name"])) : "upload";
+    const safeName = (rawName || "upload").replace(/[^A-Za-z0-9._-]+/g, "-").slice(-80);
+    const path = `uploads/${Date.now()}-${safeName}`;
+    await storageRequest("/storage/v1/bucket", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: "uploads", name: "uploads", public: true }),
+    }).catch(() => undefined);
+    const response = await storageRequest(`/storage/v1/object/uploads/${path}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": req.headers["content-type"] ?? "application/octet-stream",
+        "x-upsert": "true",
+      },
+      body: bytes,
+    });
+    if (!response.ok) {
+      throw new Error(`Supabase upload returned ${response.status}`);
+    }
+    res.json({ url: `${base}/storage/v1/object/public/uploads/${path}` });
+  } catch (error) {
+    res.status(502).json({
+      error: "Upload failed.",
+      detail: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
 });
 
 router.put("/content", async (req, res) => {

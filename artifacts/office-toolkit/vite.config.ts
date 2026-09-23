@@ -27,6 +27,8 @@ if (!basePath) {
   );
 }
 
+const apiProxyTarget = process.env.API_PROXY_TARGET ?? 'http://localhost:4000';
+
 export default defineConfig({
   base: basePath,
   plugins: [
@@ -72,10 +74,19 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    watch: {
+      ignored: ['**/public/vendor/tesseract/**'],
+    },
+    proxy: {
+      '/api': { target: apiProxyTarget, changeOrigin: true },
+    },
   },
   preview: {
     port,
     host: '0.0.0.0',
     allowedHosts: true,
+    proxy: {
+      '/api': { target: apiProxyTarget, changeOrigin: true },
+    },
   },
 });
