@@ -15,6 +15,9 @@
       "env": ["BACKEND_URL"]
     },
     {
+      "handle": "filesystem"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
