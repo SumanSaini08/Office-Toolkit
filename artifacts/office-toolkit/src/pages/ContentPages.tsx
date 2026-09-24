@@ -1,6 +1,6 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, ArrowRight, Bold, Check, Eye, EyeOff, FileText, Globe, HelpCircle, Image as ImageIcon, Info, Italic, KeyRound, Layers, LayoutDashboard, LockKeyhole, LogIn, LogOut, Menu, PenLine, Plus, RefreshCcw, Save, Search, Settings, Sparkles, Tag, Trash2, Upload, Users, X } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, ArrowRight, Bold, Check, ChevronRight, Eye, EyeOff, FileText, Globe, HelpCircle, Image as ImageIcon, Info, Italic, KeyRound, LayoutDashboard, LockKeyhole, LogIn, LogOut, Menu, PenLine, Plus, ReceiptText, RefreshCcw, Save, Search, Settings, Sparkles, Tag, Trash2, Upload, Users, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   fallbackContent,
@@ -10,13 +10,16 @@ import {
   type BlogPost,
   type OfficeToolkitContent,
 } from "@/lib/content";
+import { applyPageMeta } from "@/lib/seo";
+import { JsonLd } from "@/components/JsonLd";
 
-function ContentMeta({ title, description }: { title: string; description: string }) {
+const ORIGIN = typeof window !== "undefined" ? window.location.origin : "";
+const PAGE_SIZE = 12;
+
+function ContentMeta({ title, description, robots, image, canonical, ogType, article, prevUrl, nextUrl }: { title: string; description: string; robots?: string; image?: string; canonical?: string; ogType?: string; article?: { publishedTime: string; modifiedTime?: string; author?: string }; prevUrl?: string; nextUrl?: string }) {
   useEffect(() => {
-    document.title = `${title} â€” Office Toolkit`;
-    const meta = document.querySelector('meta[name="description"]');
-    meta?.setAttribute("content", description);
-  }, [title, description]);
+    applyPageMeta({ title, description, robots, image, canonical, ogType, article, prevUrl, nextUrl });
+  }, [title, description, robots, image, canonical, ogType, article, prevUrl, nextUrl]);
   return null;
 }
 
@@ -39,7 +42,7 @@ function CoverImage({ post, className }: { post: BlogPost; className?: string })
   }, [post.imageUrl]);
   if (post.coverEnabled === false) return null;
   if (post.imageUrl && !failed) {
-    return <img src={post.imageUrl} alt={post.imageAlt || post.title} className={className} onError={() => setFailed(true)} />;
+    return <img loading="lazy" src={post.imageUrl} alt={post.imageAlt || post.title} className={className} onError={() => setFailed(true)} />;
   }
   return (
     <div className={`flex w-full items-center justify-center bg-[linear-gradient(135deg,hsl(var(--primary)/.22),hsl(var(--primary)/.05)_45%,hsl(var(--secondary)/.5))] ${className ?? ""}`} data-testid="cover-placeholder">
@@ -48,34 +51,112 @@ function CoverImage({ post, className }: { post: BlogPost; className?: string })
   );
 }
 
+function addHeadingIds(html: string): { html: string; headings: { id: string; text: string }[] } {
+  const headings: { id: string; text: string }[] = [];
+  const htmlWithIds = html.replace(/<h2([^>]*)>([\s\S]*?)<\/h2>/gi, (_match, attrs, inner) => {
+    const text = inner.replace(/<[^>]+>/g, "").trim();
+    const id = `section-${headings.length}`;
+    headings.push({ id, text });
+    const marker = /class=/i.test(attrs as string) ? "" : ' class="scroll-mt-28"';
+    return `<h2${attrs} id="${id}"${marker}>${inner}</h2>`;
+  });
+  return { html: htmlWithIds, headings };
+}
+
 function BlogPage() {
   const [location] = useLocation();
   const content = useContent();
   const { posts, localPosts, addPost, deletePost } = useLocalBlogPosts(content.blogPosts);
   const visiblePosts = useMemo(() => posts.filter((item) => item.published !== false), [posts]);
-  const slug = location.startsWith("/blog/") ? decodeURIComponent(location.slice("/blog/".length)) : "";
+  const pageMatch = location.match(/^\/blog\/page\/(\d+)\/?$/);
+  const page = pageMatch ? Math.max(1, parseInt(pageMatch[1], 10)) : 1;
+  const totalPages = Math.max(1, Math.ceil(visiblePosts.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagePosts = visiblePosts.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const listingCanonical = safePage === 1 ? "/blog" : `/blog/page/${safePage}`;
+  const prevUrl = safePage > 1 ? (safePage - 1 === 1 ? "/blog" : `/blog/page/${safePage - 1}`) : undefined;
+  const nextUrl = safePage < totalPages ? `/blog/page/${safePage + 1}` : undefined;
+  const slug = location.startsWith("/blog/") && !/^\/blog\/page\/?$/.test(location) ? decodeURIComponent(location.slice("/blog/".length)) : "";
   const post = visiblePosts.find((item) => item.slug === slug);
+  const relatedPosts = visiblePosts.filter((item) => item.slug !== slug).slice(0, 3);
 
   if (post) {
+    const toolCta = toolCtaForPost(post);
     const isLocal = localPosts.some((p) => p.slug === post.slug);
-    const healedContent = post.content ? healContentHtml(post.content) : "";
-    const hasHtml = /<\/?[a-z][^>]*>/i.test(healedContent);
+    const { html: postBody, headings } = addHeadingIds(post.content ? healContentHtml(post.content) : "");
+    const hasHtml = /<\/?[a-z][^>]*>/i.test(postBody);
     const coverOn = post.coverEnabled !== false;
     return (
       <>
-        <ContentMeta title={post.seo?.metaTitle || post.title} description={post.seo?.metaDescription || post.excerpt} />
+        <ContentMeta title={post.seo?.metaTitle || post.title} description={post.seo?.metaDescription || post.excerpt} image={post.imageUrl || "/og/default.png"} canonical={`/blog/${post.slug}`} ogType="article" article={{ publishedTime: post.publishedAt, modifiedTime: post.publishedAt, author: post.author }} />
         <main>
-          <ContentHeader eyebrow={`${post.category} Â· ${post.readTime}`} title={post.title} description={post.excerpt} />
+          <JsonLd id="blog-post" data={{
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            headline: post.seo?.metaTitle || post.title,
+            description: post.excerpt,
+            image: post.imageUrl,
+            url: `${ORIGIN}/blog/${post.slug}`,
+            datePublished: post.publishedAt,
+            dateModified: post.publishedAt,
+            author: post.author ? { "@type": "Person", name: post.author } : { "@type": "Organization", name: "Office Toolkit" },
+            publisher: { "@type": "Organization", name: "Office Toolkit", logo: { "@type": "ImageObject", url: `${ORIGIN}/logo.png` } },
+            mainEntityOfPage: `${ORIGIN}/blog/${post.slug}`,
+          }} />
+          {!!post.faq?.length && <JsonLd id="blog-faq" data={{
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: post.faq.map((item) => ({
+              "@type": "Question",
+              name: item.question,
+              acceptedAnswer: { "@type": "Answer", text: item.answer },
+            })),
+          }} />}
+          <ContentHeader eyebrow={`${post.category} · ${post.readTime}`} title={post.title} description={post.excerpt} />
+          <nav aria-label="Breadcrumb" className="border-b border-[hsl(var(--border))]">
+            <div className="mx-auto max-w-3xl px-5 lg:px-8">
+              <ol className="flex flex-wrap items-center gap-1.5 py-2.5 text-sm">
+                <li><Link href="/" className="inline-flex min-h-11 items-center font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--primary))]">Home</Link></li>
+                <li aria-hidden="true" className="hidden h-11 items-center text-[hsl(var(--muted-foreground))] opacity-60 sm:inline-flex"><ChevronRight size={13} /></li>
+                <li><Link href="/blog" className="inline-flex min-h-11 items-center font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--primary))]">Blog</Link></li>
+                <li aria-hidden="true" className="hidden h-11 items-center text-[hsl(var(--muted-foreground))] opacity-60 sm:inline-flex"><ChevronRight size={13} /></li>
+                <li aria-current="page" className="inline-flex min-h-11 max-w-full items-center truncate font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--primary))]"><span className="truncate">{post.title}</span></li>
+              </ol>
+            </div>
+          </nav>
           <article className="mx-auto max-w-3xl px-5 py-14 lg:px-8 lg:py-20">
-            {post.imageUrl && coverOn && <img src={post.imageUrl} alt={post.imageAlt || post.title} className="w-full rounded-[1.35rem] border border-[hsl(var(--border))] object-cover" />}
-            <p className={`font-mono-ui text-[10px] uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))] ${post.imageUrl && coverOn ? "mt-8" : ""}`}>{formatDate(post.publishedAt)}{post.author ? ` Â· By ${post.author}` : ""}</p>
+            {post.imageUrl && coverOn && <img src={post.imageUrl} alt={post.imageAlt || post.title} width={1280} height={720} className="aspect-video w-full rounded-[1.35rem] border border-[hsl(var(--border))] object-cover" />}
+            <p className={`font-mono-ui text-[10px] uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))] ${post.imageUrl && coverOn ? "mt-8" : ""}`}>{formatDate(post.publishedAt)}{post.author ? ` · By ${post.author}` : ""}</p>
+            {headings.length >= 3 && (
+              <nav aria-label="In this article" className="mt-10 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
+                <p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--primary))]">In this article</p>
+                <ol className="mt-3 space-y-2">
+                  {headings.map((heading, index) => (
+                    <li key={heading.id} className="flex items-baseline gap-3 text-sm">
+                      <span className="font-mono-ui text-[11px] font-bold text-[hsl(var(--muted-foreground))]">{String(index + 1).padStart(2, "0")}</span>
+                      <a href={`#${heading.id}`} className="min-h-6 py-1 font-bold leading-6 text-[hsl(var(--foreground))] transition-colors hover:text-[hsl(var(--primary))]">{heading.text}</a>
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+            )}
             <div className="mt-10 text-base leading-8 text-[hsl(var(--muted-foreground))]">
               {hasHtml ? (
-                <div className="space-y-4 [&_div]:mb-1 [&_div]:leading-8 [&_p]:leading-8 [&_li]:leading-8 [&_strong]:font-bold [&_h1]:mt-10 [&_h1]:font-display [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-[-.03em] [&_h2]:mt-10 [&_h2]:font-display [&_h2]:text-[1.65rem] [&_h2]:font-bold [&_h2]:tracking-[-.03em] [&_h2]:first:mt-0 [&_h3]:mt-9 [&_h3]:font-display [&_h3]:text-[1.35rem] [&_h3]:font-bold [&_h3]:tracking-[-.02em] [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-7 [&_ol]:pl-7 [&_ul]:space-y-1.5 [&_ol]:space-y-1.5 [&_table]:my-6 [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-[hsl(var(--border))] [&_th]:bg-[hsl(var(--secondary)/.4)] [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-[hsl(var(--border))] [&_td]:p-2 [&_blockquote]:my-6 [&_blockquote]:border-l-2 [&_blockquote]:border-[hsl(var(--primary))] [&_blockquote]:pl-4 [&_blockquote]:italic" dangerouslySetInnerHTML={{ __html: healedContent }} />
+                <div className="space-y-4 [&_div]:mb-1 [&_div]:leading-8 [&_p]:leading-8 [&_li]:leading-8 [&_strong]:font-bold [&_h1]:mt-10 [&_h1]:font-display [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-[-.03em] [&_h2]:mt-10 [&_h2]:font-display [&_h2]:text-[1.65rem] [&_h2]:font-bold [&_h2]:tracking-[-.03em] [&_h2]:first:mt-0 [&_h3]:mt-9 [&_h3]:font-display [&_h3]:text-[1.35rem] [&_h3]:font-bold [&_h3]:tracking-[-.02em] [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-7 [&_ol]:pl-7 [&_ul]:space-y-1.5 [&_ol]:space-y-1.5 [&_table]:my-6 [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-[hsl(var(--border))] [&_th]:bg-[hsl(var(--secondary)/.4)] [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-[hsl(var(--border))] [&_td]:p-2 [&_blockquote]:my-6 [&_blockquote]:border-l-2 [&_blockquote]:border-[hsl(var(--primary))] [&_blockquote]:pl-4 [&_blockquote]:italic" dangerouslySetInnerHTML={{ __html: postBody }} />
               ) : (
                 <div className="space-y-6">{post.content.split(/\n\n+/).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
               )}
             </div>
+            {toolCta && (
+              <div className="mt-10 flex flex-wrap items-center gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 md:p-6">
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]">{toolCta.icon === "invoice" ? <ReceiptText size={20} /> : <PenLine size={20} />}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-[hsl(var(--foreground))]">{toolCta.title}</p>
+                  <p className="mt-0.5 text-xs leading-5 text-[hsl(var(--muted-foreground))]">Free, private, and no account needed — it runs entirely in your browser.</p>
+                </div>
+                <Link href={toolCta.href} className="btn-press inline-flex min-h-11 items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-6 text-sm font-bold text-[hsl(var(--primary-foreground))]">{toolCta.label} <ArrowRight size={15} /></Link>
+              </div>
+            )}
             {!!post.tags?.length && (
               <div className="mt-10 flex flex-wrap gap-2">
                 {post.tags.map((tag) => (
@@ -101,9 +182,24 @@ function BlogPage() {
             )}
             {post.pdfUrl && <a href={post.pdfUrl} target="_blank" rel="noreferrer" className="btn-press mt-10 inline-flex items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 py-3 text-sm font-bold text-[hsl(var(--primary-foreground))]"><FileText size={16} /> Open attached PDF</a>}
             <div className="mt-12 flex flex-wrap items-center gap-4 border-t border-[hsl(var(--border))] pt-6">
-              <Link href="/blog" className="inline-flex items-center gap-2 text-sm font-bold text-[hsl(var(--primary))]"><ArrowLeft size={16} /> Back to the journal</Link>
+              <Link href="/blog" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-[hsl(var(--primary))]"><ArrowLeft size={16} /> Back to the journal</Link>
               {isLocal && <button type="button" onClick={() => { deletePost(post.slug); window.location.href = "/blog"; }} className="inline-flex items-center gap-2 text-sm font-bold text-[hsl(var(--destructive))]"><Trash2 size={16} /> Delete this note</button>}
             </div>
+            {relatedPosts.length > 0 && (
+              <section className="mt-12 border-t border-[hsl(var(--border))] pt-8">
+                <h2 className="font-display text-2xl font-bold tracking-[-.03em] text-[hsl(var(--foreground))]">Read next</h2>
+                <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                  {relatedPosts.map((item) => (
+                    <Link key={item.id} href={`/blog/${item.slug}`} className="tool-card group relative flex flex-col rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
+                      <span className="font-mono-ui text-[10px] font-bold uppercase tracking-[.14em] text-[hsl(var(--primary))]">{item.category}</span>
+                      <h3 className="mt-3 font-display text-lg font-bold leading-snug tracking-[-.03em] group-hover:text-[hsl(var(--primary))]">{item.title}</h3>
+                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">{item.excerpt}</p>
+                      <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-[hsl(var(--primary))]">Read note <ArrowRight size={13} /></span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
           </article>
         </main>
       </>
@@ -112,8 +208,22 @@ function BlogPage() {
 
   return (
     <>
-      <ContentMeta title="Office Toolkit Journal" description="Practical notes on signatures, invoices, resumes, and calmer workdays." />
+      <ContentMeta title="Blog & Guides — Invoice & Signature Tips" description="Practical, ad-free notes on e-signatures, invoices, GST, resumes, and calmer workdays. Fresh guides from the Office Toolkit team, free to read." canonical={listingCanonical} image="/og/default.png" prevUrl={prevUrl} nextUrl={nextUrl} />
       <main>
+        <JsonLd id="blog-listing" data={{
+          "@context": "https://schema.org",
+          "@type": "Blog",
+          name: "Office Toolkit Blog & Guides",
+          url: `${ORIGIN}/blog`,
+          description: "Practical, ad-free notes on e-signatures, invoices, GST, resumes, and calmer workdays.",
+          blogPost: pagePosts.map((item) => ({
+            "@type": "BlogPosting",
+            headline: item.seo?.metaTitle || item.title,
+            url: `${ORIGIN}/blog/${item.slug}`,
+            datePublished: item.publishedAt,
+            author: item.author ? { "@type": "Person", name: item.author } : { "@type": "Organization", name: "Office Toolkit" },
+          })),
+        }} />
         <ContentHeader eyebrow="The journal" title="Useful notes for the work between meetings." description="Practical, plainspoken guidance for making documents, applications, and everyday office work a little easier." />
         <section className="mx-auto max-w-6xl px-5 py-14 lg:px-8 lg:py-20">
           <p className="mb-8 max-w-2xl text-base leading-7 text-[hsl(var(--muted-foreground))]">The journal is short by design. Each note answers one practical question — how to sign a document cleanly, write an invoice that gets paid, or make an application easier to read — in plain language you can use immediately. New notes appear here as they are published.</p>
@@ -121,17 +231,24 @@ function BlogPage() {
           <p className="mb-8 max-w-2xl text-base leading-7 text-[hsl(var(--muted-foreground))]">You can also contribute to this page. The publish option behind the scenes lets you add your own notes, which appear here alongside the articles. Everything published follows the same rules as the toolkit: it stays on your device, shows no ads, and is never sold.</p>
   
           <div className="grid gap-4 md:grid-cols-3">
-            {visiblePosts.map((item) => (
+            {pagePosts.map((item) => (
               <Link key={item.id} href={`/blog/${item.slug}`} className="tool-card group relative flex flex-col rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6">
                 <CoverImage post={item} className="mb-5 aspect-video w-full rounded-xl object-cover" />
                 <div className="flex items-center justify-between"><span className="font-mono-ui text-[10px] font-bold uppercase tracking-[.14em] text-[hsl(var(--primary))]">{item.category}</span><span className="text-xs text-[hsl(var(--muted-foreground))]">{[formatDate(item.publishedAt), item.readTime].filter(Boolean).join(" · ")}</span></div>
                 {localPosts.some((p) => p.slug === item.slug) && <span className="absolute right-6 top-6 inline-flex items-center gap-1 rounded-full bg-[hsl(var(--secondary)/.6)] px-2 py-0.5 text-[10px] font-bold text-[hsl(var(--primary))]"><PenLine size={11} /> Yours</span>}
                 <h2 className="mt-8 font-display text-2xl font-bold leading-tight tracking-[-.04em] group-hover:text-[hsl(var(--primary))]">{item.title}</h2>
                 <p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{item.excerpt}</p>
-                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[hsl(var(--primary))]">Read note <span aria-hidden="true">â†’</span></span>
+                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[hsl(var(--primary))]">Read note <span aria-hidden="true">→</span></span>
               </Link>
             ))}
           </div>
+          {totalPages > 1 && (
+            <nav aria-label="Blog pages" className="mt-12 flex flex-wrap items-center justify-center gap-4">
+              {prevUrl ? <Link href={prevUrl} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-5 text-sm font-bold transition-colors hover:bg-[hsl(var(--secondary)/.5)]"><ArrowLeft size={15} /> Newer</Link> : null}
+              <span className="text-sm font-bold text-[hsl(var(--muted-foreground))]">Page {safePage} of {totalPages}</span>
+              {nextUrl ? <Link href={nextUrl} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-5 text-sm font-bold transition-colors hover:bg-[hsl(var(--secondary)/.5)]">Older <ArrowRight size={15} /></Link> : null}
+            </nav>
+          )}
         </section>
       </main>
     </>
@@ -156,10 +273,8 @@ function AdminPage() {
     toastTimer.current = window.setTimeout(() => setToast(null), 2600);
   };
 
-  useEffect(() => {
-    document.title = "Blog dashboard â€” Office Toolkit";
-    const meta = document.querySelector('meta[name="description"]');
-    meta?.setAttribute("content", "Manage Office Toolkit blog posts.");
+useEffect(() => {
+    applyPageMeta({ title: "Admin Dashboard", description: "Manage Office Toolkit blog posts, drafts, and settings.", robots: "noindex, nofollow" });
   }, []);
 
   useEffect(() => {
@@ -212,8 +327,10 @@ function AdminPage() {
     if (isEditor && editId && posts.some((p) => p.id === editId)) setSelectedId(editId);
   }, [isEditor, editId, posts]);
 
+  const cleanSlugText = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
   const updatePost = (id: string, patch: Partial<BlogPost>) =>
-    setContent((current) => ({ ...current, blogPosts: current.blogPosts.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
+    setContent((current) => ({ ...current, blogPosts: current.blogPosts.map((p) => (p.id === id ? { ...p, ...patch, ...(typeof patch.slug === "string" ? { slug: cleanSlugText(patch.slug) } : {}) } : p)) }));
 
   const removePost = (id: string) => {
     const next = content.blogPosts.filter((p) => p.id !== id);
@@ -311,7 +428,7 @@ function AdminPage() {
         <header className="sticky top-0 z-20 border-b border-[hsl(var(--border))] bg-[hsl(var(--card)/.9))] backdrop-blur">
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-8">
             <div className="flex items-center gap-3">
-              <button type="button" onClick={() => setSidebarOpen(true)} className="btn-press rounded-lg p-2 lg:hidden" aria-label="Open menu" data-testid="button-admin-menu"><Menu size={20} /></button>
+              <button type="button" onClick={() => setSidebarOpen(true)} className="btn-press grid size-11 place-items-center rounded-lg lg:hidden" aria-label="Open menu" data-testid="button-admin-menu"><Menu size={20} /></button>
               <div>
                 <h1 className="font-display text-xl font-bold tracking-[-.03em] lg:text-2xl">{heading}</h1>
                 <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))]">Office Toolkit control room</p>
@@ -450,12 +567,12 @@ function BlogsTable({ posts, onEdit, onDelete, onTogglePublish }: { posts: BlogP
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1.5">
-                    <button type="button" onClick={() => onEdit(post.id)} data-testid={`table-edit-${post.id}`} className="btn-press inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-[hsl(var(--secondary)/.6)] px-3 text-xs font-bold"><PenLine size={13} /> Edit</button>
+                    <button type="button" onClick={() => onEdit(post.id)} data-testid={`table-edit-${post.id}`} className="btn-press inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[hsl(var(--secondary)/.6)] px-3 text-xs font-bold"><PenLine size={13} /> Edit</button>
                     <label className="inline-flex items-center gap-1.5 rounded-lg bg-[hsl(var(--secondary)/.6)] px-2 py-1.5">
                       <span className={`text-[10px] font-bold ${published ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}>{published ? "ON" : "OFF"}</span>
                       <Switch checked={published} onCheckedChange={() => onTogglePublish(post.id)} data-testid={`table-switch-${post.id}`} aria-label={`${published ? "Unpublish" : "Publish"} ${post.title}`} />
                     </label>
-                    <button type="button" onClick={() => confirmDelete(post.id, post.title)} data-testid={`table-delete-${post.id}`} aria-label={`Delete ${post.title}`} className="btn-press inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-[hsl(var(--destructive)/.1)] px-3 text-xs font-bold text-[hsl(var(--destructive))]"><Trash2 size={13} /> Delete</button>
+                    <button type="button" onClick={() => confirmDelete(post.id, post.title)} data-testid={`table-delete-${post.id}`} aria-label={`Delete ${post.title}`} className="btn-press inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[hsl(var(--destructive)/.1)] px-3 text-xs font-bold text-[hsl(var(--destructive))]"><Trash2 size={13} /> Delete</button>
                   </div>
                 </td>
               </tr>
@@ -661,7 +778,7 @@ function PostList({ title, posts, selectedId, onSelect, onDelete, onTogglePublis
   return (
     <section className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))]">{title} Â· {posts.length}</h2>
+        <h2 className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))]">{title} · {posts.length}</h2>
       </div>
       <div className="mt-3 space-y-2">
         {posts.length === 0 && <p className="px-1 py-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Nothing here yet.</p>}
@@ -672,12 +789,12 @@ function PostList({ title, posts, selectedId, onSelect, onDelete, onTogglePublis
               <div className="flex cursor-pointer items-center justify-between gap-2" onClick={() => onSelect(post.id)} data-testid={`admin-post-item-${post.id}`}>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold text-[hsl(var(--foreground))]">{post.title || "Untitled post"}</p>
-                  <p className="truncate text-xs text-[hsl(var(--muted-foreground))]">{post.publishedAt} Â· {post.category || "Uncategorized"}{!!post.tags?.length ? ` Â· ${post.tags.length} tags` : ""}</p>
+                  <p className="truncate text-xs text-[hsl(var(--muted-foreground))]">{post.publishedAt} · {post.category || "Uncategorized"}{!!post.tags?.length ? ` · ${post.tags.length} tags` : ""}</p>
                 </div>
                 <span className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${published ? "bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))]" : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]"}`}>{published ? <Eye size={11} /> : <EyeOff size={11} />} {published ? "Published" : "Draft"}</span>
               </div>
               <div className="flex flex-wrap items-center gap-1.5 border-t border-[hsl(var(--border)/.6)] pt-2">
-                <button type="button" onClick={() => onSelect(post.id)} className="btn-press inline-flex min-h-7 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[hsl(var(--secondary)/.5)] px-2 text-xs font-bold" data-testid={`admin-post-edit-${post.id}`}><PenLine size={12} /> Edit</button>
+                <button type="button" onClick={() => onSelect(post.id)} className="btn-press inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[hsl(var(--secondary)/.5)] px-2 text-xs font-bold" data-testid={`admin-post-edit-${post.id}`}><PenLine size={12} /> Edit</button>
                 <label className="inline-flex items-center gap-1.5 rounded-lg bg-[hsl(var(--secondary)/.6)] px-2 py-1.5">
                   <span className={`text-[10px] font-bold ${published ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}>{published ? "ON" : "OFF"}</span>
                   <Switch checked={published} onCheckedChange={() => onTogglePublish(post.id)} data-testid={`admin-post-switch-${post.id}`} aria-label={`${published ? "Unpublish" : "Publish"} ${post.title}`} />
@@ -814,7 +931,7 @@ function PostEditor({ post, categories, update, onSave, onSaveDraft, onDelete }:
         </div>
         <div className="flex items-center gap-2">
           <span className={`inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold ${post.published !== false ? "bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))]" : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]"}`}>{post.published !== false ? <Eye size={13} /> : <EyeOff size={13} />} {post.published !== false ? "Published" : "Draft"}</span>
-          <button type="button" onClick={onDelete} className="btn-press inline-flex min-h-8 items-center gap-1.5 rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.05)] px-3 text-xs font-bold text-[hsl(var(--destructive))]"><Trash2 size={13} /> Delete</button>
+          <button type="button" onClick={onDelete} className="btn-press inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.05)] px-3 text-xs font-bold text-[hsl(var(--destructive))]"><Trash2 size={13} /> Delete</button>
         </div>
       </div>
 
@@ -859,12 +976,12 @@ function PostEditor({ post, categories, update, onSave, onSaveDraft, onDelete }:
                   <input value={post.imageUrl ?? ""} onChange={(event) => { setImageStatus("loading"); update({ imageUrl: event.target.value }); }} className={inputClass} placeholder="https://... image URL" data-testid="admin-input-image-url" />
                 </div>
                 <label className="block">
-                  <span className={labelClass}>Alt Text <span className="font-normal">(shown if the image fails to load)</span></span>
+                  <span className={labelClass}>Alt Text <span className="font-normal">(read aloud by screen readers; shown if the image fails)</span></span>
                   <input value={post.imageAlt ?? ""} onChange={(event) => update({ imageAlt: event.target.value })} className={inputClass} placeholder={post.title || "Describe the cover image"} data-testid="admin-input-alt-text" />
                 </label>
                 <div className="aspect-video w-full overflow-hidden rounded-xl border border-[hsl(var(--border))]">
                   {post.imageUrl && imageStatus !== "error" ? (
-                    <img key={post.imageUrl} src={post.imageUrl} alt={post.imageAlt || post.title || "Cover image"} className="h-full w-full object-cover" onLoad={() => setImageStatus("loaded")} onError={() => setImageStatus("error")} data-testid="img-cover-preview" />
+                    <img loading="lazy" key={post.imageUrl} src={post.imageUrl} alt={post.imageAlt || post.title || "Cover image"} className="h-full w-full object-cover" onLoad={() => setImageStatus("loaded")} onError={() => setImageStatus("error")} data-testid="img-cover-preview" />
                   ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center" data-testid="img-cover-placeholder">
                       <ImageIcon size={20} className={post.imageUrl ? "text-[hsl(var(--destructive))]" : "text-[hsl(var(--muted-foreground))]"} />
@@ -957,7 +1074,7 @@ function PostEditor({ post, categories, update, onSave, onSaveDraft, onDelete }:
 
         <div className="order-1 space-y-5 lg:order-2">
           <div>
-            <span className={labelClass}>Content <span className="font-normal">(bold, italic, alignment â€” paste anywhere here to auto-convert)</span></span>
+            <span className={labelClass}>Content <span className="font-normal">(bold, italic, alignment — paste anywhere here to auto-convert)</span></span>
             {pasteInfo && <span className="mb-1.5 block text-xs font-semibold text-[hsl(var(--primary))]">{pasteInfo}</span>}
             <RichTextEditor initial={post.content} onChange={(html) => update({ content: html })} onPasteText={convertPaste} />
           </div>
@@ -1053,7 +1170,7 @@ function AdminLoginPage() {
     }
   };
 
-  return <><ContentMeta title="Admin login" description="Sign in to manage Office Toolkit journal posts." /><main className="grid min-h-screen place-items-center bg-[hsl(var(--muted))] px-5 py-12"><section className="w-full max-w-md rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-7 shadow-sm md:p-9"><div className="grid size-12 place-items-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><LockKeyhole size={21} /></div><p className="mt-7 font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">Restricted workspace</p><h1 className="mt-3 font-display text-4xl font-bold tracking-[-.06em]">Admin sign in</h1><p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Sign in to edit journal posts from your blog dashboard.</p><form onSubmit={submit} className="mt-7 space-y-4"><input type="text" name="username" value="admin" readOnly autoComplete="username" tabIndex={-1} aria-hidden="true" className="sr-only" /><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Admin password</span><div className="relative"><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={showPassword ? "off" : "current-password"} required className="h-11 w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring)/.25)]" data-testid="input-admin-password" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Hide password" : "Show password"} data-testid="button-toggle-admin-password" className="absolute inset-y-0 right-0 grid w-11 place-items-center text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></label>{error && <p className="rounded-xl bg-[hsl(var(--destructive)/.1)] px-3 py-2.5 text-sm text-[hsl(var(--destructive))]" role="alert">{error}</p>}<button type="submit" disabled={submitting} className="btn-press inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--primary))] text-sm font-bold text-[hsl(var(--primary-foreground))] disabled:cursor-wait disabled:opacity-60" data-testid="button-admin-login"><LogIn size={16} /> {submitting ? "Signing inâ€¦" : "Sign in"}</button></form><ForgotPasswordButton /></section></main></>;
+  return <><ContentMeta title="Admin login" description="Sign in to manage Office Toolkit journal posts." robots="noindex, nofollow" /><main className="grid min-h-screen place-items-center bg-[hsl(var(--muted))] px-5 py-12"><section className="w-full max-w-md rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-7 shadow-sm md:p-9"><div className="grid size-12 place-items-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><LockKeyhole size={21} /></div><p className="mt-7 font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">Restricted workspace</p><h1 className="mt-3 font-display text-4xl font-bold tracking-[-.06em]">Admin sign in</h1><p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Sign in to edit journal posts from your blog dashboard.</p><form onSubmit={submit} className="mt-7 space-y-4"><input type="text" name="username" value="admin" readOnly autoComplete="username" tabIndex={-1} aria-hidden="true" className="sr-only" /><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Admin password</span><div className="relative"><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={showPassword ? "off" : "current-password"} required className="h-11 w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring)/.25)]" data-testid="input-admin-password" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Hide password" : "Show password"} data-testid="button-toggle-admin-password" className="absolute inset-y-0 right-0 grid w-11 place-items-center text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></label>{error && <p className="rounded-xl bg-[hsl(var(--destructive)/.1)] px-3 py-2.5 text-sm text-[hsl(var(--destructive))]" role="alert">{error}</p>}<button type="submit" disabled={submitting} className="btn-press inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--primary))] text-sm font-bold text-[hsl(var(--primary-foreground))] disabled:cursor-wait disabled:opacity-60" data-testid="button-admin-login"><LogIn size={16} /> {submitting ? "Signing inâ€¦" : "Sign in"}</button></form><ForgotPasswordButton /></section></main></>;
 }
 
 function ForgotPasswordButton() {
@@ -1094,7 +1211,7 @@ function ForgotPasswordButton() {
 
   return (
     <div className="space-y-2">
-      <button type="button" onClick={recover} disabled={busy} className="btn-press inline-flex items-center gap-2 rounded-xl px-1 py-1 text-xs font-bold text-[hsl(var(--primary))] hover:underline disabled:opacity-60" data-testid="button-forgot-password"><RefreshCcw size={13} /> {busy ? "Generating..." : "Forgot password?"}</button>
+      <button type="button" onClick={recover} disabled={busy} className="btn-press inline-flex min-h-11 items-center gap-2 rounded-xl px-1 text-xs font-bold text-[hsl(var(--primary))] hover:underline disabled:opacity-60" data-testid="button-forgot-password"><RefreshCcw size={13} /> {busy ? "Generating..." : "Forgot password?"}</button>
       {error && <p className="text-xs font-bold text-[hsl(var(--destructive))]" role="alert">{error}</p>}
     </div>
   );
@@ -1232,6 +1349,15 @@ function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 80) || `note-${Date.now()}`;
 }
 
+function toolCtaForPost(post: BlogPost): { href: string; title: string; label: string; icon: "signature" | "invoice" } | null {
+  const hay = `${post.title ?? ""}\n${post.excerpt ?? ""}\n${post.category ?? ""}\n${(post.tags ?? []).join(" ")}`.toLowerCase();
+  const invoiceMatch = /invoice|gst|bill|billing|paid|payment|quotation|quote|freelanc/.test(hay);
+  const signMatch = /sign|signing|signature|contract|offer letter|approval/.test(hay);
+  if (invoiceMatch) return { href: "/invoice-generator", title: "Create a clear invoice, ready to send", label: "Open the free invoice generator", icon: "invoice" };
+  if (signMatch) return { href: "/e-signature-maker", title: "Sign a document in minutes, in your browser", label: "Use the free e-signature online tool", icon: "signature" };
+  return null;
+}
+
 const GENERIC_WORDS = new Set("business tool tools tips guide things stuff make makes making use using need needs know good great best simple quick easy learn learning online new work works ways way step steps start starting get getting important important best practices best-practices".split(" "));
 
 const isString = (value: unknown): value is string => typeof value === "string";
@@ -1350,6 +1476,7 @@ function healContentHtml(content: string): string {
   if (!/<\/?[a-z][^>]*>/i.test(html)) return plainTextToBlogHtml(html);
 
   html = html.replace(/<h([23])[^>]*>([^<]*?)<\/h(?![0-9a-z])/gi, (_m, lvl, attrs, text) => `<h${lvl}${attrs}>${text}</h${lvl}>`);
+  html = html.replace(/<h1([^>]*)>([^<]*?)<\/h1>/gi, (_m, attrs, text) => `<h2${attrs}>${text}</h2>`);
   html = html.replace(/<p[^>]*>\s*<\/p>/g, "");
   html = html.replace(/<li>\s*<\/li>/g, "");
   html = html.replace(/<(?:ul|ol)>\s*<\/(?:ul|ol)>/g, "");

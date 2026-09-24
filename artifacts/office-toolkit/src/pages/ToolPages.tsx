@@ -3,6 +3,10 @@ import { useLocation } from 'wouter';
 import { ArrowRight, ChevronRight, FileText, Hand, Lock, PenLine, ReceiptText } from 'lucide-react';
 import NotFound from '@/pages/not-found';
 import { toolUseCases, findToolUseCase, type ToolCategory, type ToolUseCase } from '@/lib/tools';
+import { applyPageMeta } from '@/lib/seo';
+import { JsonLd } from '@/components/JsonLd';
+
+const ORIGIN = typeof window !== 'undefined' ? window.location.origin : '';
 
 const categoryLabel: Record<ToolCategory, string> = {
   esignature: 'E-signature',
@@ -35,44 +39,21 @@ function hexToHslTriplet(hex: string): string {
 function useToolMeta(tool: ToolUseCase | undefined) {
   useEffect(() => {
     if (!tool) return;
-    document.title = tool.metaTitle;
-    const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute('content', tool.metaDescription);
-    let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-    if (!canonical) {
-      canonical = document.createElement('link');
-      canonical.setAttribute('rel', 'canonical');
-      document.head.appendChild(canonical);
-    }
-    canonical.setAttribute('href', `${window.location.origin}/tools/${tool.slug}`);
-  }, [tool]);
-}
-
-function useToolSchema(tool: ToolUseCase | undefined) {
-  useEffect(() => {
-    const id = 'faqpage-schema';
-    document.getElementById(id)?.remove();
-    if (!tool) return;
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
-    script.id = id;
-    script.textContent = JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'FAQPage',
-      mainEntity: tool.faq.map((item) => ({
-        '@type': 'Question',
-        name: item.q,
-        acceptedAnswer: { '@type': 'Answer', text: item.a },
-      })),
+    applyPageMeta({
+      title: tool.metaTitle,
+      description: tool.metaDescription,
+      canonical: `/tools/${tool.slug}`,
+      includeBrand: true,
+      image: tool.category === "invoice" ? "/og/invoice.png" : "/og/e-signature.png",
+      ogType: "website",
     });
-    document.head.appendChild(script);
   }, [tool]);
 }
 
 function ToolCrumbNav({ current }: { current: string }) {
   return (
     <nav className="flex flex-wrap items-center gap-1.5" aria-label="Breadcrumb">
-      <a href="/" className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--primary))]">Home</a>
+      <a href="/" className="inline-flex min-h-11 items-center font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--primary))]">Home</a>
       <ChevronRight size={13} className="text-[hsl(var(--muted-foreground))] opacity-60" />
       <span className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))]">Tools</span>
       <ChevronRight size={13} className="text-[hsl(var(--muted-foreground))] opacity-60" />
@@ -105,7 +86,6 @@ export function ToolPage() {
   const slug = location.startsWith('/tools/') ? decodeURIComponent(location.slice('/tools/'.length)) : '';
   const tool = findToolUseCase(slug);
   useToolMeta(tool);
-  useToolSchema(tool);
 
   if (!tool) return <NotFound />;
 
@@ -119,6 +99,34 @@ export function ToolPage() {
 
   return (
     <main style={themeVars}>
+      <JsonLd id="tool-faq" data={{
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: tool.faq.map((item) => ({
+          '@type': 'Question',
+          name: item.q,
+          acceptedAnswer: { '@type': 'Answer', text: item.a },
+        })),
+      }} />
+      <JsonLd id="tool-software" data={{
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: tool.title,
+        description: tool.metaDescription,
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web browser',
+        url: `${ORIGIN}/tools/${tool.slug}`,
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      }} />
+      <JsonLd id="tool-breadcrumb" data={{
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `${ORIGIN}/` },
+          { '@type': 'ListItem', position: 2, name: 'Tools' },
+          { '@type': 'ListItem', position: 3, name: tool.title, item: `${ORIGIN}/tools/${tool.slug}` },
+        ],
+      }} />
       <section className="border-b border-[hsl(var(--border))]" style={{ backgroundColor: tool.theme.bg }}>
         <div className="mx-auto max-w-4xl px-5 pb-14 pt-10 lg:px-8 lg:pb-16">
           <ToolCrumbNav current={tool.title} />
@@ -135,7 +143,7 @@ export function ToolPage() {
       </section>
 
       <section className="mx-auto max-w-4xl px-5 py-16 lg:px-8 lg:py-20">
-        <h2 className="font-display text-3xl font-bold tracking-[-.04em] text-[hsl(var(--foreground))]">How it works</h2>
+        <h2 className="font-display text-3xl font-bold tracking-[-.04em] text-[hsl(var(--foreground))]">{tool.stepsHeading ?? 'How it works'}</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Plain steps, no training needed. Everything stays in the browser.</p>
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           {tool.steps.map((step, index) => (
