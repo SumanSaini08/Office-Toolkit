@@ -57,3 +57,5 @@ Thumbs.db
 *.log
 preview-err.log
 preview-out.log
+
+.vercel
