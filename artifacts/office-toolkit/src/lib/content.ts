@@ -81,6 +81,7 @@ export const fallbackContent: OfficeToolkitContent = {
       readTime: "5 min read",
       publishedAt: "2026-08-30",
       content: "A good invoice answers the next question before your client has to ask it.\n\nInclude a clear invoice number, a specific due date, plain-language line items, and the payment details your client needs. The goal is not to make a document look complicated. The goal is to make the next action obvious.\n\nWhen the invoice feels considered, it quietly communicates that the work behind it is considered too.",
+      seo: { metaTitle: "Better Invoices Get Paid Faster – 3 Tips", metaDescription: "Small invoice details remove the uncertainty that slows down payment. Learn what to include so your client acts fast, plus a free invoice generator." },
     },
     {
       id: "resume-that-gets-read",
@@ -91,6 +92,7 @@ export const fallbackContent: OfficeToolkitContent = {
       readTime: "6 min read",
       publishedAt: "2026-08-30",
       content: "A resume is not a full autobiography. It is a clear invitation to continue the conversation.\n\nUse familiar section labels, keep your strongest experience near the top, and make every bullet earn its space. A strong bullet usually starts with an action, names the work, and gives the reader a result or useful scale.\n\nKeep the formatting calm. One readable typeface, consistent dates, and generous line spacing will do more for comprehension than a crowded collection of decorative elements.",
+      seo: { metaTitle: "How to Make a Resume Easier to Read", metaDescription: "Recruiters skim first. Learn a simple resume hierarchy that helps the right details survive the first pass, with clear sections, strong bullets and calm formatting." },
     },
     {
       id: "signing-with-confidence",
@@ -101,6 +103,7 @@ export const fallbackContent: OfficeToolkitContent = {
       readTime: "4 min read",
       publishedAt: "2026-08-30",
       content: "The best digital signature is the one that works wherever you need it. Leave enough breathing room around the mark, choose a dark ink for light documents, and test it at the size it will actually appear.\n\nTyping your name can be a useful alternative when you need a repeatable sign-off. Choose a style that feels like you, keep the color consistent, and export with transparency so the image sits naturally on a contract, invoice, or letter.",
+      seo: { metaTitle: "Professional E-signature Tips – How to Sign", metaDescription: "A professional e-signature needs to be legible, consistent and easy to place. Simple tips to draw, type and export digital signatures that look clean on contracts." },
     },
   ],
   signatureTemplates: generatedSignatureTemplates,
