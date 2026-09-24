@@ -18,6 +18,7 @@ export type BlogPost = {
   author?: string;
   tags?: string[];
   imageUrl?: string;
+  imageAlt?: string;
   pdfUrl?: string;
   coverEnabled?: boolean;
   faq?: BlogFaq[];
@@ -273,7 +274,7 @@ async function tryImportFromSupabase(): Promise<OfficeToolkitContent | undefined
   }
 }
 
-async function readContent(): Promise<OfficeToolkitContent> {
+export async function readContent(): Promise<OfficeToolkitContent> {
   try {
     const raw = await fs.readFile(localPath, "utf8");
     return normalizeContent(JSON.parse(raw) as Partial<OfficeToolkitContent>);

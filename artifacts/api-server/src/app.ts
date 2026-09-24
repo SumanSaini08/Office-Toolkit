@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import sitemapRouter from "./routes/sitemap";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -39,5 +40,8 @@ app.use(express.raw({
 }));
 
 app.use("/api", router);
+
+// Public, canonical XML endpoints live at the site root (not under /api).
+app.use(sitemapRouter);
 
 export default app;
