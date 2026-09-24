@@ -8,6 +8,11 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+const corsOriginsEnv = process.env["CORS_ORIGINS"]?.trim();
+const allowedOrigins = corsOriginsEnv
+  ? corsOriginsEnv.split(",").map((origin) => origin.trim()).filter(Boolean)
+  : ["https://office-toolkit.vercel.app", "http://localhost:5173"];
+
 app.use(
   pinoHttp({
     logger,
@@ -27,7 +32,7 @@ app.use(
     },
   }),
 );
-app.use(cors({ credentials: true, origin: true }));
+app.use(cors({ credentials: true, origin: allowedOrigins }));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
