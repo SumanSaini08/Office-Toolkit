@@ -5,13 +5,16 @@ import {
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { professionalSignatureFonts } from '@/lib/content';
+import { applyPageMeta } from '@/lib/seo';
+import { YouMightAlsoNeed, esignatureToolUseCases } from '@/components/RelatedTools';
+import { JsonLd } from '@/components/JsonLd';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 type ExportFormat = 'png' | 'jpg' | 'pdf';
 
-function PageMeta({ title, description, children }: { title: string; description: string; children: ReactNode }) {
-  useEffect(() => { document.title = `${title} — Office Toolkit`; window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }); }, [title, description]);
+function PageMeta({ title, description, children, image, ogType }: { title: string; description: string; children: ReactNode; image?: string; ogType?: string }) {
+  useEffect(() => { applyPageMeta({ title, description, image, ogType }); window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }); }, [title, description, image, ogType]);
   return <div className="page-in">{children}</div>;
 }
 
@@ -91,7 +94,7 @@ function Button({ children, onClick, variant = 'primary', testId, className = ''
     outline: 'border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--foreground))] hover:border-[hsl(var(--primary)/.5)] hover:bg-[hsl(var(--secondary)/.45)]',
     accent: 'bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] hover:brightness-105',
   };
-  return <button type="button" onClick={onClick} data-testid={testId} className={`btn-press inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold shadow-[0_2px_0_hsl(var(--shadow-color)/.12)] disabled:cursor-not-allowed disabled:opacity-50 ${styles[variant]} ${className}`}>{children}</button>;
+  return <button type="button" onClick={onClick} data-testid={testId} className={`btn-press inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold shadow-[0_2px_0_hsl(var(--shadow-color)/.12)] disabled:cursor-not-allowed disabled:opacity-50 ${styles[variant]} ${className}`}>{children}</button>;
 }
 
 function Field({ label, value, onChange, placeholder, type = 'text', testId, className = '' }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; testId: string; className?: string }) {
@@ -109,10 +112,10 @@ function InfoSection({ title, intro, bullets, faq }: { title: string; intro: str
 
 function ToolIntro({ id, children }: { id: string; children?: ReactNode }) {
   const meta: Record<string, { eyebrow: string; title: string; description: string }> = {
-    signature: { eyebrow: 'Sign it, send it, done', title: 'E-signature maker', description: 'Sign a PDF in three steps: upload your document, create a signature, drag it into place, and download. Create one-off signature images too.' },
+    signature: { eyebrow: 'Sign it, send it, done', title: 'Make a free e-signature online', description: 'Sign PDFs in three steps with a free e-signature online tool: upload your document, create a signature, drag it into place, and download. Create one-off signature images too.' },
   };
   const tool = meta[id] ?? meta.signature;
-  return <div className="mx-auto max-w-6xl px-5 pb-8 pt-12 lg:px-8 lg:pt-16"><div className="flex items-center gap-3 text-[hsl(var(--primary))]"><span className="grid size-10 place-items-center rounded-xl bg-[hsl(var(--secondary))]"><PenLine size={19} /></span><span className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em]">{tool.eyebrow}</span></div><div className="mt-5 flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><h1 className="font-display text-4xl font-bold tracking-[-.055em] md:text-6xl">{tool.title}</h1><p className="mt-4 max-w-xl text-base leading-7 text-[hsl(var(--muted-foreground))]">{tool.description}</p><p className="mt-3 max-w-xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Everything runs locally in your browser tab. There is no account to create, no file to upload, and no server round-trip, so your work stays on your device until you choose to export a finished file.</p><p className="mt-3 max-w-xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">You will not find a paywall, a watermark, or a nagging upgrade prompt on the finish line. The maker is there to do one thing well, and when it is done the file is yours — no account required, no marketing email required, no calendar invitation required.</p><p className="mt-3 max-w-xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Everything you type, draw, or upload for this task is processed right here in this tab. That makes the tool fast, offline-friendly, and private. Refreshing the page starts you fresh, so export the file you want to keep before you close the window.</p></div>{children}</div></div>;
+  return <div className="mx-auto max-w-6xl px-5 pb-8 pt-12 lg:px-8 lg:pt-16"><nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center gap-1.5"><a href="/" className="inline-flex min-h-11 items-center font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--primary))]">Home</a><ChevronRight size={13} className="text-[hsl(var(--muted-foreground))] opacity-60" /><span aria-current="page" className="inline-flex min-h-11 items-center font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--primary))]">{tool.title}</span></nav><div className="flex items-center gap-3 text-[hsl(var(--primary))]"><span className="grid size-10 place-items-center rounded-xl bg-[hsl(var(--secondary))]"><PenLine size={19} /></span><span className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em]">{tool.eyebrow}</span></div><div className="mt-5 flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><h1 className="font-display text-4xl font-bold tracking-[-.055em] md:text-6xl">{tool.title}</h1><p className="mt-4 max-w-xl text-base leading-7 text-[hsl(var(--muted-foreground))]">{tool.description}</p><p className="mt-3 max-w-xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Everything runs locally in your browser tab. There is no account to create, no file to upload, and no server round-trip, so your work stays on your device until you choose to export a finished file.</p><p className="mt-3 max-w-xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">You will not find a paywall, a watermark, or a nagging upgrade prompt on the finish line. The maker is there to do one thing well, and when it is done the file is yours — no account required, no marketing email required, no calendar invitation required.</p><p className="mt-3 max-w-xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Everything you type, draw, or upload for this task is processed right here in this tab. That makes the tool fast, offline-friendly, and private. Refreshing the page starts you fresh, so export the file you want to keep before you close the window.</p></div>{children}</div></div>;
 }
 
 function loadImage(dataUrl: string) {
@@ -475,14 +478,23 @@ export function ESignatureMaker() {
     { id: 'upload', label: 'Upload' },
   ];
 
-  return <PageMeta title="Sign PDF — E-signature maker" description="Sign a PDF online: upload a document, create your signature by drawing, typing, or uploading it, drag it anywhere on the page, and download. Private and instant in your browser."><main>{!docData && <ToolIntro id="signature"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Nothing leaves your browser</span></ToolIntro>}
+  return <PageMeta title="Free E-signature Online – Sign Documents Without an Account" description="Use a free e-signature online tool to sign PDFs in minutes — upload, draw or type your mark, place it, download. Electronic signature online free, private and instant in your browser." image="/og/e-signature.png"><main><JsonLd id="tool-software-main" data={{
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "E-signature Maker",
+    description: "A free e-signature online tool — upload a document, draw or type your signature, drag it anywhere on the page, and download. Private — nothing leaves your browser.",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web browser",
+    url: `${typeof window !== "undefined" ? window.location.origin : ""}/e-signature-maker`,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  }} />{!docData && <ToolIntro id="signature"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Nothing leaves your browser</span></ToolIntro>}
     <div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[1.2fr_.8fr] lg:px-8">
       <section className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 shadow-sm md:p-6 col-span-full">
         <>
           {!docData ? (
             <div className="flex flex-col items-center justify-center rounded-[1.35rem] border-2 border-dashed border-[hsl(var(--primary)/.35)] bg-[hsl(var(--background))] px-6 py-14 text-center">
               <div className="flex items-center gap-2 text-xs font-bold text-[hsl(var(--primary))]"><ShieldCheck size={14} /> Works entirely in your browser</div>
-              <h3 className="mt-4 font-display text-3xl font-bold tracking-[-.04em] md:text-4xl">Sign a PDF</h3>
+              <h2 className="mt-4 font-display text-3xl font-bold tracking-[-.04em] md:text-4xl">Sign a PDF online</h2>
               <p className="mt-3 max-w-md text-sm leading-6 text-[hsl(var(--muted-foreground))]">Upload your document, create your signature, drag it anywhere on the page, and download. Free and private.</p>
               <div className="mt-7 w-full max-w-md rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
                 <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[hsl(var(--primary)/.4)] bg-[hsl(var(--secondary)/.25)] px-6 py-10 text-center transition-colors hover:bg-[hsl(var(--secondary)/.4)]">
@@ -498,7 +510,7 @@ export function ESignatureMaker() {
                 </div>
                 <div className="mt-4 flex w-full items-center gap-2">
                   <input value={docLink} onChange={(e) => setDocLink(e.target.value)} placeholder="https://…" data-testid="input-signature-doc-link" className="h-10 w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm outline-none transition-shadow placeholder:text-[hsl(var(--muted-foreground)/.65)] focus:ring-2 focus:ring-[hsl(var(--ring)/.25)]" />
-                  <button type="button" onClick={loadDocFromLink} data-testid="button-signature-doc-link" className="btn-press h-10 shrink-0 rounded-xl bg-[hsl(var(--secondary))] px-4 text-sm font-bold">Load link</button>
+                  <button type="button" onClick={loadDocFromLink} data-testid="button-signature-doc-link" className="btn-press h-11 shrink-0 rounded-xl bg-[hsl(var(--secondary))] px-4 text-sm font-bold">Load link</button>
                 </div>
                 {docLinkError && <p className="mt-2 text-xs text-[hsl(var(--destructive))]" role="alert">{docLinkError}</p>}
                 {docError && <p className="mt-2 text-xs text-[hsl(var(--destructive))]" role="alert">{docError}</p>}
@@ -527,7 +539,7 @@ export function ESignatureMaker() {
                       <div className="mt-3"><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Signature font</span><select value={proFont} onChange={(e) => setProFont(e.target.value)} className="h-10 w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm" data-testid="select-doc-sign-font">{professionalSignatureFonts.map(([fontName, fontStackValue]) => <option key={fontStackValue} value={fontStackValue}>{fontName}</option>)}</select></label></div>
                     </div>}
                     {sigTab === 'upload' && <div>
-                      <div onClick={() => document.getElementById('composer-sign-upload-input')?.click()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('composer-sign-upload-input')?.click(); } }} className="flex min-h-[140px] cursor-pointer items-center justify-center rounded-2xl border border-dashed border-[hsl(var(--primary)/.35)] bg-[hsl(var(--card))] px-4 transition-colors hover:bg-[hsl(var(--secondary)/.25)]" data-testid="upload-doc-sign-dropzone">{composerUpload ? <img src={composerUpload} alt="Uploaded signature" className="max-h-28 max-w-full object-contain" /> : <div className="text-center"><Upload className="mx-auto text-[hsl(var(--primary))]" size={22} /><p className="mt-2 text-xs font-bold">Upload a signature image</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">PNG, JPG, or WebP. Transparent PNG works best.</p></div>}</div>
+                      <div onClick={() => document.getElementById('composer-sign-upload-input')?.click()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('composer-sign-upload-input')?.click(); } }} className="flex min-h-[140px] cursor-pointer items-center justify-center rounded-2xl border border-dashed border-[hsl(var(--primary)/.35)] bg-[hsl(var(--card))] px-4 transition-colors hover:bg-[hsl(var(--secondary)/.25)]" data-testid="upload-doc-sign-dropzone">{composerUpload ? <img src={composerUpload} alt="Preview of your uploaded signature image" className="max-h-28 max-w-full object-contain" /> : <div className="text-center"><Upload className="mx-auto text-[hsl(var(--primary))]" size={22} /><p className="mt-2 text-xs font-bold">Upload a signature image</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">PNG, JPG, or WebP. Transparent PNG works best.</p></div>}</div>
                       <input id="composer-sign-upload-input" type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => pickComposerUpload(e.target.files?.[0])} data-testid="input-doc-sign-upload" />
                       {composerUpload && <button type="button" onClick={() => setComposerUpload('')} className="mt-2 text-xs font-bold text-[hsl(var(--muted-foreground))]">Remove image</button>}
                       {composerUploadError && <p className="mt-2 text-xs text-[hsl(var(--destructive))]" role="alert">{composerUploadError}</p>}
@@ -535,7 +547,7 @@ export function ESignatureMaker() {
                     {sigTab !== 'upload' && <div className="mt-3"><InkPicker colors={colors} color={color} onChange={setColor} testIdPrefix="button-doc-color" /></div>}
                   </div>
                   <Button onClick={sigTab === 'draw' ? applyComposerDraw : sigTab === 'type' ? applyComposerType : applyComposerUpload} className="mt-4 w-full" testId="button-doc-signature-apply"><Check size={15} /> {signatureData ? 'Update signature' : 'Create signature'}</Button>
-                  {signatureData && <div className="mt-3 flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3"><img src={signatureData} alt="Your signature" className="h-10 w-auto object-contain" data-testid="img-doc-signature-preview" /><span className="text-xs font-bold text-[hsl(var(--primary))]">Ready — drag it onto the page</span></div>}
+                  {signatureData && <div className="mt-3 flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3"><img src={signatureData} alt="Your signature made in the free e-signature online tool" className="h-10 w-auto object-contain" data-testid="img-doc-signature-preview" /><span className="text-xs font-bold text-[hsl(var(--primary))]">Ready — drag it onto the page</span></div>}
                 </div>
                 <div>
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -554,14 +566,14 @@ export function ESignatureMaker() {
                       onPointerUp={() => { positioning.current = false; }}
                       onPointerLeave={() => { positioning.current = false; }}
                     >
-                      <img src={docData} alt="Uploaded document" className="w-full rounded-md" data-testid="img-document" />
+                      <img src={docData} alt="Your uploaded document being signed" className="w-full rounded-md" data-testid="img-document" />
                       {signatureData && <div className="absolute flex flex-col items-center" style={{ left: `${signPos.x}%`, top: `${signPos.y}%`, width: `${200 * signScaleX}px`, transform: 'translate(-50%, -50%)', touchAction: 'none' }} data-testid="sign-overlay">
                         <div
                           className="absolute -left-2 -top-2 z-10 grid size-6 cursor-grab place-items-center rounded-full border-2 border-white bg-[hsl(var(--muted-foreground))] text-white shadow active:cursor-grabbing"
                           title="Drag to move"
                           data-testid="handle-doc-move"
                         ><Move size={12} /></div>
-                        <img src={signatureData} alt="Placed signature" className="w-full drop-shadow-sm" data-testid="img-doc-sign-placed" />
+                        <img src={signatureData} alt="Your signature placed on the document" className="w-full drop-shadow-sm" data-testid="img-doc-sign-placed" />
                         <div
                           onPointerDown={(e) => startCornerResize(e)}
                           onPointerMove={(e) => cornerResizeMove(e)}
@@ -575,9 +587,9 @@ export function ESignatureMaker() {
                     </div>
                   </div>
                   {docIsPdf && docPageCount > 1 && <div className="mt-3 flex items-center justify-center gap-3 text-xs font-bold">
-                    <button type="button" disabled={docPageIndex === 0} onClick={() => goToPage(-1)} className="btn-press inline-flex min-h-9 items-center gap-1 rounded-lg bg-[hsl(var(--card))] px-3 py-1.5 text-[hsl(var(--muted-foreground))] shadow-sm disabled:cursor-not-allowed disabled:opacity-40" data-testid="button-doc-page-prev"><ChevronLeft size={14} /> Prev</button>
+                    <button type="button" disabled={docPageIndex === 0} onClick={() => goToPage(-1)} className="btn-press inline-flex min-h-11 items-center gap-1 rounded-lg bg-[hsl(var(--card))] px-3 text-[hsl(var(--muted-foreground))] shadow-sm disabled:cursor-not-allowed disabled:opacity-40" data-testid="button-doc-page-prev"><ChevronLeft size={14} /> Prev</button>
                     <span className="text-[hsl(var(--muted-foreground))]">Page {docPageIndex + 1} of {docPageCount}</span>
-                    <button type="button" disabled={docPageIndex === docPageCount - 1} onClick={() => goToPage(1)} className="btn-press inline-flex min-h-9 items-center gap-1 rounded-lg bg-[hsl(var(--card))] px-3 py-1.5 text-[hsl(var(--muted-foreground))] shadow-sm disabled:cursor-not-allowed disabled:opacity-40" data-testid="button-doc-page-next">Next <ChevronRight size={14} /></button>
+                    <button type="button" disabled={docPageIndex === docPageCount - 1} onClick={() => goToPage(1)} className="btn-press inline-flex min-h-11 items-center gap-1 rounded-lg bg-[hsl(var(--card))] px-3 text-[hsl(var(--muted-foreground))] shadow-sm disabled:cursor-not-allowed disabled:opacity-40" data-testid="button-doc-page-next">Next <ChevronRight size={14} /></button>
                   </div>}
                   {docIsPdf && <div className="mt-2 text-center text-xs text-[hsl(var(--muted-foreground))]">Your signature is added to the page shown here. When you download as PDF, every page is kept and the signature is stamped on this page.</div>}
                   {signatureData && <div className="mt-3 space-y-3 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/.3)] p-4">
@@ -601,13 +613,14 @@ export function ESignatureMaker() {
 
       {!docData && <aside className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--secondary)/.32)] p-6">
         <p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--primary))]">Good to know</p>
-        <h2 className="mt-3 font-display text-2xl font-bold tracking-[-.035em]">A signature that travels well</h2>
+        <h2 className="mt-3 font-display text-2xl font-bold tracking-[-.035em]">An online signature maker that travels well</h2>
         <div className="mt-6 space-y-5">
           {[['Transparent by default', 'Drop your PNG onto a PDF, contract, or email without a white box around it.'], ['Yours in a moment', 'Use a stylus, mouse, trackpad, or type a name. The result is yours to keep.'], ['Professional by design', 'Upload a rough image and we clean its background, ink, and color on this device. You can even draw a new signature on top.'], ['Sign any document', 'Upload a PDF, contract, or form image, draw or type a signature, and place it exactly where you need it — on any page.']].map(([h, p]) => <div key={h} className="flex gap-3"><span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"><Check size={14} /></span><div><h3 className="text-sm font-bold">{h}</h3><p className="mt-1 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{p}</p></div></div>)}
         </div>
       </aside>}
     </div>
-    {!docData && <InfoSection title="Digital signatures, without the ceremony" intro="A signature image is useful when you need to approve a document quickly, add a sign-off to a proposal, or make a form feel finished. Office Toolkit keeps that small job small." bullets={['Use a dark ink color for the clearest result on light documents.', 'Leave generous space around a drawn signature so it stays legible when resized.', 'Upload a signature image and use it exactly as it is — the original colour and quality are preserved.', 'Place a drawn or typed signature directly onto an uploaded PDF, contract, or form — no account needed.', 'Drawn signatures keep the smooth, natural look of a pen and can be reused over and over for approvals, agreements, and sign-offs.', 'Typed signatures are a fast, clean choice when the document is digital and the recipient expects a consistent, legible name block.', 'Sign a PDF, contract, or form, then download the final document with the signature placed exactly where you need it.', 'Everything you draw, upload, type, or sign stays in your browser — no servers, no account, no signature stored online.']} faq={[['Is my signature uploaded?', 'No. The drawing canvas, upload processing, and document signing run locally in your browser.'], ['Can I use the signature on a contract?', 'This tool creates an image of your signature. Whether that image meets a particular legal or company requirement depends on the document and jurisdiction.'], ['Which documents can I sign?', 'You can upload a PDF, PNG, JPG, or WebP document and place your signature on any page. Multi-page PDFs keep every page when you download as PDF.'],             ['Which formats can I download?', 'You can download a signature or signed document as PNG, JPG, or PDF. PNG is best when you need a transparent background.'],
+    {!docData && <InfoSection title="Digital signatures, without the ceremony" intro="A signature image is useful when you need to approve a document quickly, add a sign-off to a proposal, or make a form feel finished. Office Toolkit keeps that small job small." bullets={['Use a dark ink color for the clearest result on light documents.', 'Leave generous space around a drawn signature so it stays legible when resized.', 'Upload a signature image and use it exactly as it is — the original colour and quality are preserved.', 'Place a drawn or typed signature directly onto an uploaded PDF, contract, or form — no account needed.', 'Drawn signatures keep the smooth, natural look of a pen and can be reused over and over for approvals, agreements, and sign-offs.', 'Typed signatures are a fast, clean choice when the document is digital and the recipient expects a consistent, legible name block.', 'Sign a PDF, contract, or form, then download the final document with the signature placed exactly where you need it.', 'Everything you draw, upload, type, or sign stays in your browser — no servers, no account, no signature stored online.']} faq={[['How to sign a PDF online free?', 'Upload the PDF, draw or type your signature, drag it onto the page, and download the signed copy — all in your browser, with no account and no charge.'], ['Is my signature uploaded?', 'No. The drawing canvas, upload processing, and document signing run locally in your browser.'], ['Can I use the signature on a contract?', 'This tool creates an image of your signature. Whether that image meets a particular legal or company requirement depends on the document and jurisdiction.'], ['Which documents can I sign?', 'You can upload a PDF, PNG, JPG, or WebP document and place your signature on any page. Multi-page PDFs keep every page when you download as PDF.'],             ['Which formats can I download?', 'You can download a signature or signed document as PNG, JPG, or PDF. PNG is best when you need a transparent background.'],
              ['Are my documents private?', 'Yes. Every document, signature, and draft is processed locally in your browser and never uploaded to a server. Close the tab and nothing is left behind.'], ['Can I sign a PDF with both a drawn and a typed signature?', 'Yes. Draw one signature, type another, or upload an image — then place each one anywhere on a PDF, PNG, JPG, or WebP document before you export. That flexibility makes it easy to add everything a signing party expects: a written mark plus a clearly printed name line.']]} />}
+    <YouMightAlsoNeed href="/invoice-generator" title="Invoice Generator" category="invoice" tools={esignatureToolUseCases} />
   </main></PageMeta>;
 }
