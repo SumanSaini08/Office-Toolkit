@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "corepack enable && corepack prepare pnpm@11.9.0 --activate && pnpm install",
+  "installCommand": "corepack enable && corepack prepare pnpm@11.27.1 --activate && pnpm install",
   "buildCommand": "pnpm --filter @workspace/office-toolkit run build:full",
   "outputDirectory": "artifacts/office-toolkit/dist/public",
   "routes": [

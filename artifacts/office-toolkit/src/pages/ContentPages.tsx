@@ -26,7 +26,7 @@ function ContentMeta({ title, description, robots, image, canonical, ogType, art
 function ContentHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
   return (
     <section className="border-b border-[hsl(var(--border))]">
-      <div className="mx-auto max-w-6xl px-5 pb-14 pt-14 lg:px-8 lg:pb-20 lg:pt-20">
+      <div className="mx-auto max-w-6xl px-5 pb-16 pt-16 lg:px-8 lg:pb-24 lg:pt-24">
         <p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">{eyebrow}</p>
         <h1 className="mt-4 max-w-3xl font-display text-5xl font-bold leading-[.96] tracking-[-.06em] md:text-7xl">{title}</h1>
         <p className="mt-6 max-w-2xl text-lg leading-8 text-[hsl(var(--muted-foreground))]">{description}</p>
@@ -124,7 +124,7 @@ function BlogPage() {
               </ol>
             </div>
           </nav>
-          <article className="mx-auto max-w-3xl px-5 py-14 lg:px-8 lg:py-20">
+          <article className="mx-auto max-w-3xl px-5 py-16 lg:px-8 lg:py-24">
             {post.imageUrl && coverOn && <img src={post.imageUrl} alt={post.imageAlt || post.title} width={1280} height={720} className="aspect-video w-full rounded-[1.35rem] border border-[hsl(var(--border))] object-cover" />}
             <p className={`font-mono-ui text-[10px] uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))] ${post.imageUrl && coverOn ? "mt-8" : ""}`}>{formatDate(post.publishedAt)}{post.author ? ` · By ${post.author}` : ""}</p>
             {headings.length >= 3 && (
@@ -225,7 +225,7 @@ function BlogPage() {
           })),
         }} />
         <ContentHeader eyebrow="The journal" title="Useful notes for the work between meetings." description="Practical, plainspoken guidance for making documents, applications, and everyday office work a little easier." />
-        <section className="mx-auto max-w-6xl px-5 py-14 lg:px-8 lg:py-20">
+        <section className="mx-auto max-w-6xl px-5 py-16 lg:px-8 lg:py-24">
           <p className="mb-8 max-w-2xl text-base leading-7 text-[hsl(var(--muted-foreground))]">The journal is short by design. Each note answers one practical question — how to sign a document cleanly, write an invoice that gets paid, or make an application easier to read — in plain language you can use immediately. New notes appear here as they are published.</p>
           <p className="mb-8 max-w-2xl text-base leading-7 text-[hsl(var(--muted-foreground))]">If you are short on time, read the first paragraph of any note — that is where the practical answer lives. The rest of the post is for when you want the reasoning, the examples, and the small details that make the advice stick. Posts are written in the same spirit as the tools: straightforward, specific, and free of padding.</p>
           <p className="mb-8 max-w-2xl text-base leading-7 text-[hsl(var(--muted-foreground))]">You can also contribute to this page. The publish option behind the scenes lets you add your own notes, which appear here alongside the articles. Everything published follows the same rules as the toolkit: it stays on your device, shows no ads, and is never sold.</p>
@@ -238,7 +238,7 @@ function BlogPage() {
                 {localPosts.some((p) => p.slug === item.slug) && <span className="absolute right-6 top-6 inline-flex items-center gap-1 rounded-full bg-[hsl(var(--secondary)/.6)] px-2 py-0.5 text-[10px] font-bold text-[hsl(var(--primary))]"><PenLine size={11} /> Yours</span>}
                 <h2 className="mt-8 font-display text-2xl font-bold leading-tight tracking-[-.04em] group-hover:text-[hsl(var(--primary))]">{item.title}</h2>
                 <p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{item.excerpt}</p>
-                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[hsl(var(--primary))]">Read note <span aria-hidden="true">→</span></span>
+                <span className="mt-auto flex items-center gap-2 pt-5 text-sm font-bold text-[hsl(var(--primary))]">Read note <span aria-hidden="true">→</span></span>
               </Link>
             ))}
           </div>

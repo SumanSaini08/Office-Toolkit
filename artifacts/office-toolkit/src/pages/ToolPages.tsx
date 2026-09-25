@@ -128,7 +128,7 @@ export function ToolPage() {
         ],
       }} />
       <section className="border-b border-[hsl(var(--border))]" style={{ backgroundColor: tool.theme.bg }}>
-        <div className="mx-auto max-w-4xl px-5 pb-14 pt-10 lg:px-8 lg:pb-16">
+        <div className="mx-auto max-w-4xl px-5 pb-12 pt-12 lg:px-8 lg:pb-16 lg:pt-16">
           <ToolCrumbNav current={tool.title} />
           <p className="mt-10 font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">{categoryLabel[tool.category]} use case</p>
           <h1 className="mt-4 max-w-3xl font-display text-4xl font-bold leading-[1] tracking-[-.055em] text-[hsl(var(--foreground))] md:text-5xl">{tool.title}</h1>
@@ -142,7 +142,7 @@ export function ToolPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-4xl px-5 py-16 lg:px-8 lg:py-20">
+      <section className="mx-auto max-w-4xl px-5 py-16 lg:px-8 lg:py-24">
         <h2 className="font-display text-3xl font-bold tracking-[-.04em] text-[hsl(var(--foreground))]">{tool.stepsHeading ?? 'How it works'}</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Plain steps, no training needed. Everything stays in the browser.</p>
         <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -156,7 +156,7 @@ export function ToolPage() {
       </section>
 
       <section className="border-t border-[hsl(var(--border))]">
-        <div className="mx-auto max-w-4xl px-5 py-16 lg:px-8 lg:py-20">
+        <div className="mx-auto max-w-4xl px-5 py-16 lg:px-8 lg:py-24">
           <h2 className="font-display text-3xl font-bold tracking-[-.04em] text-[hsl(var(--foreground))]">Common questions</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Sawaal-jawaab simple bhasha me, taaki kaam bina rukawat ho.</p>
           <div className="mt-8 space-y-3">
@@ -171,7 +171,7 @@ export function ToolPage() {
       </section>
 
       <section className="border-t border-[hsl(var(--border))]">
-        <div className="mx-auto max-w-4xl px-5 py-16 lg:px-8 lg:py-20">
+        <div className="mx-auto max-w-4xl px-5 py-16 lg:px-8 lg:py-24">
           <h2 className="font-display text-3xl font-bold tracking-[-.04em] text-[hsl(var(--foreground))]">Related Tools &amp; Formats</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Same tools, other everyday use cases — grouped by category.</p>
           <div className="mt-8 space-y-10">

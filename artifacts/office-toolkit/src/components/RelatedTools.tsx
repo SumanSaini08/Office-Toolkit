@@ -19,7 +19,7 @@ export function ToolCardLink({ href, title, category, testId }: { href: string; 
 export function YouMightAlsoNeed({ href, title, category, tools, excludeSlug }: { href: string; title: string; category: 'esignature' | 'invoice'; tools?: ToolUseCase[]; excludeSlug?: string }) {
   return (
     <section className="border-t border-[hsl(var(--border))]">
-      <div className="mx-auto max-w-6xl px-5 py-14 lg:px-8">
+      <div className="mx-auto max-w-6xl px-5 py-16 lg:px-8">
         <p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--primary))]">Keep going</p>
         <h2 className="mt-3 font-display text-2xl font-bold tracking-[-.03em]">You might also need</h2>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
