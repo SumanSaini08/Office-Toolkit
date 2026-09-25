@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { ToolPage } from '@/pages/ToolPages';
-import { toolFooterColumns, toolUseCases } from '@/lib/tools';
+import { toolFooterColumns } from '@/lib/tools';
 import { YouMightAlsoNeed, invoiceToolUseCases } from '@/components/RelatedTools';
 import { AdminPage, AdminLoginPage, BlogPage } from '@/pages/ContentPages';
 import { professionalSignatureFonts, useOfficeToolkitContent } from '@/lib/content';
@@ -65,7 +65,6 @@ function Header() {
   const toolLinks = [
     { href: '/e-signature-maker', label: 'E-signature tool' },
     { href: '/invoice-generator', label: 'Invoice generator' },
-    ...toolUseCases.map((tool) => ({ href: `/tools/${tool.slug}`, label: tool.title })),
   ];
   const isToolLinkActive = (href: string) => {
     if (location === href) return true;
@@ -86,16 +85,9 @@ function Header() {
           <div className="relative" ref={toolsRef} onMouseEnter={() => setToolsOpen(true)} onMouseLeave={() => setToolsOpen(false)}>
             <button type="button" onClick={() => setToolsOpen((value) => !value)} data-testid="button-nav-tools" className={`flex items-center gap-1 rounded-full px-3.5 py-2 text-sm font-medium transition-colors hover:bg-[hsl(var(--muted))] ${toolLinks.some((l) => location === l.href) ? 'bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`}>Tools <ChevronDown size={15} className={`transition-transform ${toolsOpen ? 'rotate-180' : ''}`} /></button>
             {toolsOpen && (
-              <div className="absolute left-1/2 top-full z-50 w-[26rem] -translate-x-1/2 pt-2">
-                <div className="nav-menu-in relative overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
-                  <p className="border-b border-[hsl(var(--border))] px-4 pb-2.5 pt-3.5 font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--muted-foreground))]">Featured tools</p>
-                  <div className="p-2">
-                    {toolLinks.slice(0, 2).map((link) => <Link key={link.href} href={link.href} onClick={() => setToolsOpen(false)} className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-[hsl(var(--muted))] ${isToolLinkActive(link.href) ? 'bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid={`link-nav-${link.label.toLowerCase()}`}><span>{link.label}</span><ArrowRight size={14} className="shrink-0 text-[hsl(var(--primary))]" /></Link>)}
-                  </div>
-                  <p className="border-t border-[hsl(var(--border))] px-4 pb-2.5 pt-3 font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--muted-foreground))]">Popular use cases</p>
-                  <div className="grid grid-cols-2 gap-1 p-2 pt-0">
-                    {toolLinks.slice(2).map((link) => <Link key={link.href} href={link.href} onClick={() => setToolsOpen(false)} className={`block rounded-xl px-3 py-2.5 text-[13px] font-semibold leading-5 transition-colors hover:bg-[hsl(var(--muted))] ${isToolLinkActive(link.href) ? 'bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid={`link-nav-${link.label.toLowerCase().replaceAll(' ', '-')}`}>{link.label}</Link>)}
-                  </div>
+              <div className="absolute left-1/2 top-full z-50 w-max min-w-56 -translate-x-1/2 pt-2">
+                <div className="nav-menu-in relative overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-2 shadow-xl">
+                  {toolLinks.map((link) => <Link key={link.href} href={link.href} onClick={() => setToolsOpen(false)} className={`flex items-center justify-between gap-4 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-[hsl(var(--muted))] ${isToolLinkActive(link.href) ? 'bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid={`link-nav-${link.label.toLowerCase()}`}><span>{link.label}</span><ArrowRight size={14} className="shrink-0 text-[hsl(var(--primary))]" /></Link>)}
                 </div>
               </div>
             )}
@@ -260,7 +252,7 @@ function Home() {
         email: 'hello@officetoolkit.app',
       }} />
       <section className="relative overflow-hidden border-b border-[hsl(var(--border))]">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 pb-16 pt-16 lg:grid-cols-[1.05fr_.95fr] lg:gap-16 lg:px-8 lg:pb-24 lg:pt-24">
+        <div className="mx-auto grid max-w-6xl items-start gap-12 px-5 pb-16 pt-16 lg:grid-cols-[1.05fr_.95fr] lg:gap-16 lg:px-8 lg:pb-24 lg:pt-24">
           <div className="relative z-10">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[hsl(var(--primary)/.2)] bg-[hsl(var(--secondary)/.5)] px-3 py-1.5 font-mono-ui text-[10px] font-bold uppercase tracking-[.13em] text-[hsl(var(--primary))]"><span className="size-1.5 rounded-full bg-[hsl(var(--accent))]" /> A calmer workday starts here</div>
             <h1 className="max-w-2xl font-display text-[3.65rem] font-bold leading-[.94] tracking-[-.065em] sm:text-6xl lg:text-[5.7rem]">Free invoice and e-signature tool.<br /><span className="text-[hsl(var(--primary))]">Small tools, clear head.</span></h1>
