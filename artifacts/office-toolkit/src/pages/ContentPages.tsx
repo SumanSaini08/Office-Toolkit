@@ -29,7 +29,7 @@ function ContentHeader({ eyebrow, title, description }: { eyebrow: string; title
       <div className="mx-auto max-w-6xl px-5 pb-16 pt-16 lg:px-8 lg:pb-24 lg:pt-24">
         <p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">{eyebrow}</p>
         <h1 className="mt-4 max-w-3xl font-display text-5xl font-bold leading-[.96] tracking-[-.06em] md:text-7xl">{title}</h1>
-        <p className="mt-6 max-w-2xl text-lg leading-8 text-[hsl(var(--muted-foreground))]">{description}</p>
+        <p className="mt-6 max-w-3xl text-lg leading-8 text-[hsl(var(--muted-foreground))]">{description}</p>
       </div>
     </section>
   );
@@ -226,9 +226,9 @@ function BlogPage() {
         }} />
         <ContentHeader eyebrow="The journal" title="Useful notes for the work between meetings." description="Practical, plainspoken guidance for making documents, applications, and everyday office work a little easier." />
         <section className="mx-auto max-w-6xl px-5 py-16 lg:px-8 lg:py-24">
-          <p className="mb-8 max-w-2xl text-base leading-7 text-[hsl(var(--muted-foreground))]">The journal is short by design. Each note answers one practical question — how to sign a document cleanly, write an invoice that gets paid, or make an application easier to read — in plain language you can use immediately. New notes appear here as they are published.</p>
-          <p className="mb-8 max-w-2xl text-base leading-7 text-[hsl(var(--muted-foreground))]">If you are short on time, read the first paragraph of any note — that is where the practical answer lives. The rest of the post is for when you want the reasoning, the examples, and the small details that make the advice stick. Posts are written in the same spirit as the tools: straightforward, specific, and free of padding.</p>
-          <p className="mb-8 max-w-2xl text-base leading-7 text-[hsl(var(--muted-foreground))]">You can also contribute to this page. The publish option behind the scenes lets you add your own notes, which appear here alongside the articles. Everything published follows the same rules as the toolkit: it stays on your device, shows no ads, and is never sold.</p>
+          <p className="mb-8 max-w-3xl text-base leading-7 text-[hsl(var(--muted-foreground))]">The journal is short by design. Each note answers one practical question — how to sign a document cleanly, write an invoice that gets paid, or make an application easier to read — in plain language you can use immediately. New notes appear here as they are published.</p>
+          <p className="mb-8 max-w-3xl text-base leading-7 text-[hsl(var(--muted-foreground))]">If you are short on time, read the first paragraph of any note — that is where the practical answer lives. The rest of the post is for when you want the reasoning, the examples, and the small details that make the advice stick. Posts are written in the same spirit as the tools: straightforward, specific, and free of padding.</p>
+          <p className="mb-8 max-w-3xl text-base leading-7 text-[hsl(var(--muted-foreground))]">You can also contribute to this page. The publish option behind the scenes lets you add your own notes, which appear here alongside the articles. Everything published follows the same rules as the toolkit: it stays on your device, shows no ads, and is never sold.</p>
   
           <div className="grid gap-4 md:grid-cols-3">
             {pagePosts.map((item) => (

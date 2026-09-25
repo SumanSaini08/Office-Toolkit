@@ -132,10 +132,10 @@ export function ToolPage() {
           <ToolCrumbNav current={tool.title} />
           <p className="mt-10 font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">{categoryLabel[tool.category]} use case</p>
           <h1 className="mt-4 max-w-3xl font-display text-4xl font-bold leading-[1] tracking-[-.055em] text-[hsl(var(--foreground))] md:text-5xl">{tool.title}</h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-[hsl(var(--muted-foreground))]">{tool.intro}</p>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">This page gathers the everyday situations people use the tool for, the quick steps that get them done, and honest answers to the questions that come up most. The tool itself works entirely in your browser, keeps your details on your device, and gives you a polished file you can share straight away.</p>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Read the steps below in order once and you will quickly recognise which formats you actually need. Most people end up working with their own details — their own signatures, logos, and wording are the only ones that should matter — so start with whatever you already have on hand rather than looking for a perfect template.</p>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">If you are new, take the first scenario and follow it from top to bottom. You will finish with one real file for a real task, and that is usually enough to make everything else feel familiar. Everything described here is free, stays local to your browser, and is ready the moment you arrive.</p>
+          <p className="mt-6 max-w-3xl text-lg leading-8 text-[hsl(var(--muted-foreground))]">{tool.intro}</p>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">This page gathers the everyday situations people use the tool for, the quick steps that get them done, and honest answers to the questions that come up most. The tool itself works entirely in your browser, keeps your details on your device, and gives you a polished file you can share straight away.</p>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Read the steps below in order once and you will quickly recognise which formats you actually need. Most people end up working with their own details — their own signatures, logos, and wording are the only ones that should matter — so start with whatever you already have on hand rather than looking for a perfect template.</p>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">If you are new, take the first scenario and follow it from top to bottom. You will finish with one real file for a real task, and that is usually enough to make everything else feel familiar. Everything described here is free, stays local to your browser, and is ready the moment you arrive.</p>
           <a href={tool.relatedTool.href} data-testid="tool-cta-open" className="btn-press mt-9 inline-flex min-h-12 items-center gap-2 rounded-2xl bg-[hsl(var(--primary))] px-7 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-[0_10px_30px_-18px_hsl(var(--primary))] transition-colors hover:brightness-110">
             {tool.relatedTool.label} <ArrowRight size={18} />
           </a>
@@ -144,7 +144,7 @@ export function ToolPage() {
 
       <section className="mx-auto max-w-4xl px-5 py-16 lg:px-8 lg:py-24">
         <h2 className="font-display text-3xl font-bold tracking-[-.04em] text-[hsl(var(--foreground))]">{tool.stepsHeading ?? 'How it works'}</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Plain steps, no training needed. Everything stays in the browser.</p>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Plain steps, no training needed. Everything stays in the browser.</p>
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           {tool.steps.map((step, index) => (
             <div key={step} className="flex gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
@@ -158,7 +158,7 @@ export function ToolPage() {
       <section className="border-t border-[hsl(var(--border))]">
         <div className="mx-auto max-w-4xl px-5 py-16 lg:px-8 lg:py-24">
           <h2 className="font-display text-3xl font-bold tracking-[-.04em] text-[hsl(var(--foreground))]">Common questions</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Sawaal-jawaab simple bhasha me, taaki kaam bina rukawat ho.</p>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Sawaal-jawaab simple bhasha me, taaki kaam bina rukawat ho.</p>
           <div className="mt-8 space-y-3">
             {tool.faq.map((item) => (
               <div key={item.q} className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
@@ -173,7 +173,7 @@ export function ToolPage() {
       <section className="border-t border-[hsl(var(--border))]">
         <div className="mx-auto max-w-4xl px-5 py-16 lg:px-8 lg:py-24">
           <h2 className="font-display text-3xl font-bold tracking-[-.04em] text-[hsl(var(--foreground))]">Related Tools &amp; Formats</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Same tools, other everyday use cases — grouped by category.</p>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Same tools, other everyday use cases — grouped by category.</p>
           <div className="mt-8 space-y-10">
             <RelatedGroup title="E-signature" tools={esignatureTools} currentSlug={tool.slug} />
             <RelatedGroup title="Invoice &amp; formats" tools={invoiceTools} currentSlug={tool.slug} />
