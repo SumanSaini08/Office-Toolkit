@@ -255,7 +255,19 @@ function Home() {
         <div className="mx-auto max-w-6xl px-5 pb-16 pt-16 lg:px-8 lg:pb-24 lg:pt-24">
           <div className="relative z-10 max-w-3xl">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[hsl(var(--primary)/.2)] bg-[hsl(var(--secondary)/.5)] px-3 py-1.5 font-mono-ui text-[10px] font-bold uppercase tracking-[.13em] text-[hsl(var(--primary))]"><span className="size-1.5 rounded-full bg-[hsl(var(--accent))]" /> A calmer workday starts here</div>
-            <h1 className="max-w-2xl font-display text-[3.65rem] font-bold leading-[.94] tracking-[-.065em] sm:text-6xl lg:text-[5.7rem]">Free invoice and e-signature tool.<br /><span className="text-[hsl(var(--primary))]">Small tools, clear head.</span></h1>
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:gap-12">
+              <h1 className="flex-1 font-display text-5xl font-bold leading-[1.02] tracking-[-.05em] md:text-6xl lg:text-7xl">Free invoice and e-signature tool.<br /><span className="text-[hsl(var(--primary))]">Small tools, clear head.</span></h1>
+              <div className="w-full shrink-0 lg:w-60 xl:w-64">
+                <div className="paper-shadow rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
+                  <p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">Free · No signup</p>
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center gap-2.5"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><PenLine size={15} /></span><span className="flex-1 text-xs font-bold leading-4">E-signature maker</span><span className="text-[10px] font-bold uppercase tracking-[.08em] text-[hsl(var(--muted-foreground))]">PNG · PDF</span></div>
+                    <div className="flex items-center gap-2.5"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><FileText size={15} /></span><span className="flex-1 text-xs font-bold leading-4">Invoice generator</span><span className="text-[10px] font-bold uppercase tracking-[.08em] text-[hsl(var(--muted-foreground))]">GST · PDF</span></div>
+                  </div>
+                  <div className="mt-4 border-t border-[hsl(var(--border))] pt-3"><span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]"><ShieldCheck size={13} className="text-[hsl(var(--primary))]" /> Private by default</span></div>
+                </div>
+              </div>
+            </div>
             <p className="mt-7 text-lg leading-8 text-[hsl(var(--muted-foreground))]">The useful little things your workday needs — a free invoice and e-signature tool, with no logins, no data harvesting, and no twelve-step tour.</p>
             <p className="mt-4 text-base leading-7 text-[hsl(var(--muted-foreground))]">Sign a document in minutes, or send a clean invoice before the call ends. This free e-signature maker and GST invoice generator run entirely in your browser — no account needed. Every tool opens ready to work, finishes one job properly, and then stays out of your way until you need it again.</p>
             <p className="mt-4 text-base leading-7 text-[hsl(var(--muted-foreground))]">Office Toolkit is built around a simple trade: you give us nothing, and the thing you came for happens fast. No password reset flows, no storage quota, no upgrade pop-ups — just a tool that opens, does the job, and hands you a file you can send, print, or file away.</p>
