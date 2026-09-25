@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin
 Disallow: /api
 
-Sitemap: https://officetoolkit.app/sitemap.xml
+Sitemap: https://office-toolkit.vercel.app/sitemap.xml

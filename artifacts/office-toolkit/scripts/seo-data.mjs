@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 
-export const SITE_URL = "https://officetoolkit.app";
+export const SITE_URL = "https://office-toolkit.vercel.app";
 
 const staticRoutes = [
   {

@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { readContent, type BlogPost } from "./content";
 
 // Canonical public origin. Override with SITE_URL if the domain ever changes.
-const SITE_URL = (process.env.SITE_URL ?? "https://officetoolkit.app").replace(/\/+$/, "");
+const SITE_URL = (process.env.SITE_URL ?? "https://office-toolkit.vercel.app").replace(/\/+$/, "");
 
 // Tool-format/use-case pages mirror src/lib/tools.ts in the web client.
 const toolSlugs = [
