@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -195,12 +195,6 @@ async function storeAdminPassword(password: string) {
   }
 }
 
-function randomTempPassword() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-  const bytes = randomBytes(18);
-  return Array.from(bytes, (byte) => chars[byte % chars.length]).join("");
-}
-
 async function storageRequest(
   path: string,
   init?: { method?: string; headers?: Record<string, string>; body?: string | Uint8Array },
@@ -387,19 +381,6 @@ router.post("/admin/password", async (req, res) => {
   } catch (error) {
     res.status(502).json({
       error: "Could not save the new password.",
-      detail: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
-});
-
-router.post("/admin/reset", async (_req, res) => {
-  const temp = randomTempPassword();
-  try {
-    await storeAdminPassword(temp);
-    res.json({ ok: true, tempPassword: temp });
-  } catch (error) {
-    res.status(502).json({
-      error: "Could not reset the password.",
       detail: error instanceof Error ? error.message : "Unknown error",
     });
   }
