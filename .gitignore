@@ -49,6 +49,9 @@ Thumbs.db
 .local/
 
 # env / secrets
+.env
+.env.*
+!.env.example
 .env.local
 .env.*.local
 *.local
