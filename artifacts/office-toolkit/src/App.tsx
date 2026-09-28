@@ -721,7 +721,7 @@ function ContactPage() {
             <li className="flex gap-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]"><Check size={16} className="mt-1 shrink-0 text-[hsl(var(--primary))]" />Your name and a reply-to email address.</li>
             <li className="flex gap-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]"><Check size={16} className="mt-1 shrink-0 text-[hsl(var(--primary))]" />A screenshot when something looks wrong — it helps more than a long description.</li>
           </ul>
-          <p className="mt-5 rounded-xl bg-[hsl(var(--secondary)/.5)] px-4 py-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Reply time: 1â€“2 business days. Write again if you have not heard back in three.</p>
+          <p className="mt-5 rounded-xl bg-[hsl(var(--secondary)/.5)] px-4 py-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Reply time: 1–2 business days. Write again if you have not heard back in three.</p>
         </div>
       </div>
       <div className="space-y-8">

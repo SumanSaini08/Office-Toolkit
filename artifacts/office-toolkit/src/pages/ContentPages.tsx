@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, ArrowRight, Bold, Check, ChevronRight, Eye, EyeOff, FileText, Globe, HelpCircle, Image as ImageIcon, Info, Italic, KeyRound, LayoutDashboard, LockKeyhole, LogIn, LogOut, Menu, PenLine, Plus, ReceiptText, RefreshCcw, Save, Search, Settings, Sparkles, Tag, Trash2, Upload, Users, X } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, ArrowRight, Bold, Check, ChevronRight, Eye, EyeOff, FileText, Globe, HelpCircle, Image as ImageIcon, Info, Italic, KeyRound, LayoutDashboard, LockKeyhole, LogIn, LogOut, Menu, PenLine, Plus, ReceiptText, Save, Search, Settings, Sparkles, Tag, Trash2, Upload, Users, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   fallbackContent,
@@ -387,7 +387,7 @@ useEffect(() => {
   const handleNavigate = (next: AdminView) => navigate(viewPath[next]);
 
   const persist = async (payload: OfficeToolkitContent, kind: "draft" | "publish" = "publish") => {
-    setStatus("Savingâ€¦");
+    setStatus("Saving…");
     try {
       const healedPayload: OfficeToolkitContent = {
         ...payload,
@@ -416,7 +416,7 @@ useEffect(() => {
   };
 
   if (!authChecked) {
-    return <div className="grid min-h-screen place-items-center bg-[hsl(var(--muted))]"><p className="text-sm font-semibold text-[hsl(var(--muted-foreground))]">Checking admin accessâ€¦</p></div>;
+    return <div className="grid min-h-screen place-items-center bg-[hsl(var(--muted))]"><p className="text-sm font-semibold text-[hsl(var(--muted-foreground))]">Checking admin access…</p></div>;
   }
 
   if (!authenticated) return null;
@@ -445,7 +445,7 @@ useEffect(() => {
         <main className="flex-1 px-4 py-6 lg:px-8">
           {status && <p className="mb-4 rounded-xl bg-[hsl(var(--secondary)/.5)] px-4 py-3 text-sm font-medium text-[hsl(var(--primary))]" role="status">{status}</p>}
           {loading ? (
-            <p className="py-12 text-sm font-semibold text-[hsl(var(--muted-foreground))]">Loading saved contentâ€¦</p>
+            <p className="py-12 text-sm font-semibold text-[hsl(var(--muted-foreground))]">Loading saved content…</p>
           ) : isEditor ? (
             <div className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -479,7 +479,7 @@ useEffect(() => {
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative">
                     <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
-                    <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="h-9 w-48 rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] pl-9 pr-8 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring)/.25)]" placeholder={`Search ${isDrafts ? "drafts" : isPublished ? "published" : "blogs"}â€¦`} data-testid="admin-search-posts" />
+                    <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="h-9 w-48 rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] pl-9 pr-8 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring)/.25)]" placeholder={`Search ${isDrafts ? "drafts" : isPublished ? "published" : "blogs"}…`} data-testid="admin-search-posts" />
                     {searchQuery && <button type="button" onClick={() => setSearchQuery("")} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]" data-testid="button-clear-search"><X size={13} /></button>}
                   </div>
                   <button type="button" onClick={handleAddNew} className="btn-press inline-flex min-h-9 items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-4 text-sm font-bold text-[hsl(var(--primary-foreground))]" data-testid="button-admin-new-post"><Plus size={16} /> Add New Blog</button>
@@ -594,8 +594,6 @@ function SettingsPanel() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const [tempPassword, setTempPassword] = useState("");
 
   const changePassword = async () => {
     setError("");
@@ -632,31 +630,6 @@ function SettingsPanel() {
     }
   };
 
-  const resetPassword = async () => {
-    setError("");
-    setMessage("");
-    setTempPassword("");
-    setResetting(true);
-    try {
-      const response = await fetch("/api/admin/reset", {
-        method: "POST",
-        credentials: "include",
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setError((body as { error?: string }).error ?? "Could not reset the password.");
-        return;
-      }
-      const temp = (body as { tempPassword?: string }).tempPassword ?? "";
-      setTempPassword(temp);
-      setMessage("A temporary password was created. Copy it now, it will not be shown again.");
-    } catch {
-      setError("Could not reach the admin service.");
-    } finally {
-      setResetting(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <section className="max-w-2xl rounded-[1.5rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6">
@@ -684,25 +657,6 @@ function SettingsPanel() {
           {message && <p className="rounded-xl bg-[hsl(var(--secondary)/.5)] px-4 py-3 text-sm font-semibold text-[hsl(var(--primary))]" role="status">{message}</p>}
           <button type="button" onClick={changePassword} disabled={busy} className="btn-press inline-flex min-h-10 items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 text-sm font-bold text-[hsl(var(--primary-foreground))] disabled:opacity-60" data-testid="button-change-password">{busy ? "Saving..." : "Change password"}</button>
         </div>
-      </section>
-
-      <section className="max-w-2xl rounded-[1.5rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6">
-        <div className="flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><RefreshCcw size={20} /></span>
-          <div>
-            <h2 className="font-display text-lg font-bold tracking-[-.02em]">Forgot password</h2>
-            <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))]">Cannot sign in? Generate a one-time temporary password.</p>
-          </div>
-        </div>
-        <p className="mt-4 text-sm font-semibold leading-6 text-[hsl(var(--muted-foreground))]">&Acirc;&middot; Anyone who visits this page can replace the current password with a temporary one, as long as nothing else ever changed here.</p>
-        <button type="button" onClick={resetPassword} disabled={resetting} className="btn-press mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl bg-[hsl(var(--destructive)/.1)] px-5 text-sm font-bold text-[hsl(var(--destructive))] disabled:opacity-60" data-testid="button-reset-password">{resetting ? "Generating..." : "Generate temporary password"}</button>
-        {tempPassword && (
-          <div className="mt-4 rounded-xl border border-dashed border-[hsl(var(--primary)/.5)] bg-[hsl(var(--secondary)/.4)] p-4">
-            <p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))]">Temporary password</p>
-            <p className="mt-2 break-all font-mono text-lg font-bold tracking-tight text-[hsl(var(--primary))]" data-testid="temp-password">{tempPassword}</p>
-            <p className="mt-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Copy this and use it on the sign-in page. It will not be shown again.</p>
-          </div>
-        )}
       </section>
     </div>
   );
@@ -1170,51 +1124,7 @@ function AdminLoginPage() {
     }
   };
 
-  return <><ContentMeta title="Admin login" description="Sign in to manage Office Toolkit journal posts." robots="noindex, nofollow" /><main className="grid min-h-screen place-items-center bg-[hsl(var(--muted))] px-5 py-12"><section className="w-full max-w-md rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-7 shadow-sm md:p-9"><div className="grid size-12 place-items-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><LockKeyhole size={21} /></div><p className="mt-7 font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">Restricted workspace</p><h1 className="mt-3 font-display text-4xl font-bold tracking-[-.06em]">Admin sign in</h1><p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Sign in to edit journal posts from your blog dashboard.</p><form onSubmit={submit} className="mt-7 space-y-4"><input type="text" name="username" value="admin" readOnly autoComplete="username" tabIndex={-1} aria-hidden="true" className="sr-only" /><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Admin password</span><div className="relative"><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={showPassword ? "off" : "current-password"} required className="h-11 w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring)/.25)]" data-testid="input-admin-password" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Hide password" : "Show password"} data-testid="button-toggle-admin-password" className="absolute inset-y-0 right-0 grid w-11 place-items-center text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></label>{error && <p className="rounded-xl bg-[hsl(var(--destructive)/.1)] px-3 py-2.5 text-sm text-[hsl(var(--destructive))]" role="alert">{error}</p>}<button type="submit" disabled={submitting} className="btn-press inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--primary))] text-sm font-bold text-[hsl(var(--primary-foreground))] disabled:cursor-wait disabled:opacity-60" data-testid="button-admin-login"><LogIn size={16} /> {submitting ? "Signing inâ€¦" : "Sign in"}</button></form><ForgotPasswordButton /></section></main></>;
-}
-
-function ForgotPasswordButton() {
-  const [busy, setBusy] = useState(false);
-  const [tempPassword, setTempPassword] = useState("");
-  const [error, setError] = useState("");
-
-  const recover = async () => {
-    setError("");
-    setTempPassword("");
-    setBusy(true);
-    try {
-      const response = await fetch("/api/admin/reset", { method: "POST", credentials: "include" });
-      const body = (await response.json()) as { error?: string; tempPassword?: string };
-      if (!response.ok) {
-        setError(body.error ?? "Could not reset the password.");
-        return;
-      }
-      setTempPassword(body.tempPassword ?? "");
-    } catch {
-      setError("Could not reach the admin service.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (tempPassword) {
-    return (
-      <div className="rounded-xl border border-dashed border-[hsl(var(--primary)/.5)] bg-[hsl(var(--secondary)/.4)] p-4">
-        <p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))]">Temporary password</p>
-        <p className="mt-2 break-all font-mono text-lg font-bold tracking-tight text-[hsl(var(--primary))]" data-testid="login-temp-password">{tempPassword}</p>
-        <p className="mt-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Copy this password and use it to sign in. It will not be shown again.</p>
-        <button type="button" onClick={() => { setTempPassword(""); setError(""); }} className="btn-press mt-3 inline-flex min-h-9 items-center rounded-lg bg-[hsl(var(--primary))] px-4 text-xs font-bold text-[hsl(var(--primary-foreground))]">I have copied it</button>
-        {error && <p className="mt-3 text-xs font-bold text-[hsl(var(--destructive))]" role="alert">{error}</p>}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      <button type="button" onClick={recover} disabled={busy} className="btn-press inline-flex min-h-11 items-center gap-2 rounded-xl px-1 text-xs font-bold text-[hsl(var(--primary))] hover:underline disabled:opacity-60" data-testid="button-forgot-password"><RefreshCcw size={13} /> {busy ? "Generating..." : "Forgot password?"}</button>
-      {error && <p className="text-xs font-bold text-[hsl(var(--destructive))]" role="alert">{error}</p>}
-    </div>
-  );
+  return <><ContentMeta title="Admin login" description="Sign in to manage Office Toolkit journal posts." robots="noindex, nofollow" /><main className="grid min-h-screen place-items-center bg-[hsl(var(--muted))] px-5 py-12"><section className="w-full max-w-md rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-7 shadow-sm md:p-9"><div className="grid size-12 place-items-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><LockKeyhole size={21} /></div><p className="mt-7 font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">Restricted workspace</p><h1 className="mt-3 font-display text-4xl font-bold tracking-[-.06em]">Admin sign in</h1><p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Sign in to edit journal posts from your blog dashboard.</p><form onSubmit={submit} className="mt-7 space-y-4"><input type="text" name="username" value="admin" readOnly autoComplete="username" tabIndex={-1} aria-hidden="true" className="sr-only" /><label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Admin password</span><div className="relative"><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={showPassword ? "off" : "current-password"} required className="h-11 w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring)/.25)]" data-testid="input-admin-password" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Hide password" : "Show password"} data-testid="button-toggle-admin-password" className="absolute inset-y-0 right-0 grid w-11 place-items-center text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></label>{error && <p className="rounded-xl bg-[hsl(var(--destructive)/.1)] px-3 py-2.5 text-sm text-[hsl(var(--destructive))]" role="alert">{error}</p>}<button type="submit" disabled={submitting} className="btn-press inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--primary))] text-sm font-bold text-[hsl(var(--primary-foreground))] disabled:cursor-wait disabled:opacity-60" data-testid="button-admin-login"><LogIn size={16} /> {submitting ? "Signing in…" : "Sign in"}</button></form></section></main></>;
 }
 
 function AdminInput({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (value: string) => void; multiline?: boolean }) {
@@ -1275,7 +1185,7 @@ function AdminUpload({ accept, label, onUploaded, onError }: { accept: string; l
   };
   return (
     <div>
-      <button type="button" disabled={busy} onClick={() => inputRef.current?.click()} className="btn-press inline-flex items-center gap-2 rounded-lg bg-[hsl(var(--secondary)/.5)] px-3 py-2 text-xs font-bold text-[hsl(var(--primary))] disabled:opacity-60"><Upload size={14} /> {busy ? "Uploadingâ€¦" : label}</button>
+      <button type="button" disabled={busy} onClick={() => inputRef.current?.click()} className="btn-press inline-flex items-center gap-2 rounded-lg bg-[hsl(var(--secondary)/.5)] px-3 py-2 text-xs font-bold text-[hsl(var(--primary))] disabled:opacity-60"><Upload size={14} /> {busy ? "Uploading…" : label}</button>
       <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) upload(file).catch(() => undefined); }} />
     </div>
   );
@@ -1770,7 +1680,7 @@ function blogDraftFromPaste(raw: string) {
   const text = raw.replace(/\r\n/g, "\n").trim();
   const lines = text.split("\n").map((line) => line.trim()).filter((line) => line.length > 1);
   const intro = lines[0] ?? "";
-  const title = (intro.length > 90 ? `${intro.slice(0, 88).trim()}â€¦` : intro) || "Untitled post";
+  const title = (intro.length > 90 ? `${intro.slice(0, 88).trim()}…` : intro) || "Untitled post";
   const body = lines.slice(1);
 
   type Block = { tag: "h2"; text: string } | { tag: "p"; text: string } | { tag: "ul"; items: string[] };
