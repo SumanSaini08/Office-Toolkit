@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, ArrowRight, Bold, Check, ChevronRight, Eye, EyeOff, FileText, Globe, HelpCircle, Image as ImageIcon, Info, Italic, KeyRound, LayoutDashboard, LockKeyhole, LogIn, LogOut, Menu, PenLine, Plus, ReceiptText, Save, Search, Settings, Sparkles, Tag, Trash2, Upload, Users, X } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, ArrowRight, Bold, Check, ChevronRight, Eye, EyeOff, FileText, Globe, HelpCircle, Image as ImageIcon, Info, Italic, KeyRound, LayoutDashboard, List, ListOrdered, LockKeyhole, LogIn, LogOut, Menu, PenLine, Plus, ReceiptText, Save, Search, Settings, Sparkles, Tag, Trash2, Upload, Users, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   fallbackContent,
@@ -1074,6 +1074,31 @@ function RichTextEditor({ initial, onChange, onPasteText }: { initial: string; o
     if (text.trim()) onPasteText?.(text);
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter" || event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) return;
+    const editor = ref.current;
+    const selection = window.getSelection();
+    if (!editor || !selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    if (!range.collapsed) return;
+    const container = range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentElement;
+    const block = container instanceof HTMLElement ? container.closest("p, div") : null;
+    if (!block || block.closest("li")) return;
+    const text = block.textContent ?? "";
+    const marker = text.match(/^(\s*(?:\d+[.)]|[-*•])\s+)/);
+    if (!marker || text.length > 90) return;
+    event.preventDefault();
+    const ordered = /^\s*\d+[.)]/.test(text);
+    stripLeadingListMarker(block as HTMLElement);
+    const wrap = document.createRange();
+    wrap.selectNodeContents(block);
+    selection.removeAllRanges();
+    selection.addRange(wrap);
+    try { document.execCommand("bold", false); } catch { /* ignore */ }
+    try { document.execCommand(ordered ? "insertOrderedList" : "insertUnorderedList", false); } catch { /* ignore */ }
+    sync();
+  };
+
   const ToolButton = ({ title, onClick, children }: { title: string; onClick: () => void; children: React.ReactNode }) => (
     <button type="button" title={title} aria-label={title} onMouseDown={(event) => event.preventDefault()} onClick={onClick} className="grid size-8 place-items-center rounded-lg text-sm font-bold hover:bg-[hsl(var(--secondary))]">{children}</button>
   );
@@ -1087,8 +1112,11 @@ function RichTextEditor({ initial, onChange, onPasteText }: { initial: string; o
         <ToolButton title="Align left" onClick={() => run("justifyLeft")}><AlignLeft size={15} /></ToolButton>
         <ToolButton title="Align center" onClick={() => run("justifyCenter")}><AlignCenter size={15} /></ToolButton>
         <ToolButton title="Align right" onClick={() => run("justifyRight")}><AlignRight size={15} /></ToolButton>
+        <span className="mx-1 h-5 w-px bg-[hsl(var(--border))]" />
+        <ToolButton title="Bulleted list" onClick={() => run("insertUnorderedList")}><List size={15} /></ToolButton>
+        <ToolButton title="Numbered list" onClick={() => run("insertOrderedList")}><ListOrdered size={15} /></ToolButton>
       </div>
-      <div ref={ref} contentEditable suppressContentEditableWarning className="max-h-[700px] min-h-[400px] overflow-y-auto p-4 text-[15px] leading-7 outline-none [&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:font-display [&_h2]:text-xl [&_h2]:font-bold [&_h2]:first:mt-0 [&_ul]:list-disc [&_ul]:pl-6 [&_h2+p]:mt-2 [&_h2+ul]:mt-2" onInput={sync} onBlur={sync} onPaste={handlePaste} data-testid="admin-rich-content" />
+      <div ref={ref} contentEditable suppressContentEditableWarning className="max-h-[700px] min-h-[400px] overflow-y-auto p-4 text-[15px] leading-7 outline-none [&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:font-display [&_h2]:text-xl [&_h2]:font-bold [&_h2]:first:mt-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-1 [&_h2+p]:mt-2 [&_h2+ul]:mt-2 [&_h2+ol]:mt-2" onInput={sync} onBlur={sync} onPaste={handlePaste} onKeyDown={handleKeyDown} data-testid="admin-rich-content" />
     </div>
   );
 }
@@ -1280,35 +1308,114 @@ function escapeHtml(value: string) {
 
 const PASTE_ALLOWED_TAGS = new Set(["h1", "h2", "h3", "h4", "p", "ul", "ol", "li", "table", "thead", "tbody", "tr", "td", "th", "strong", "em", "a", "pre", "code", "blockquote", "br"]);
 
+const PASTE_HEADING_RE = /^(h[1-6]|p|div|ul|ol|li|table|thead|tbody|tr|td|th|blockquote|pre)$/;
+
+function stripLeadingListMarker(el: HTMLElement): void {
+  const walker = el.ownerDocument.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let node: Node | null = walker.nextNode();
+  while (node) {
+    const value = node.nodeValue ?? "";
+    const match = value.match(/^(\s*(?:\d+[.)]|[-*•])\s+)/);
+    if (match) {
+      node.nodeValue = value.slice(match[1].length);
+      return;
+    }
+    if (value.trim()) return;
+    node = walker.nextNode();
+  }
+}
+
 function sanitizePasteHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
   const rendered: string[] = [];
-  const renderNode = (node: Node): string => {
+  let list: { ordered: boolean; items: string[] } | null = null;
+  const flushList = () => {
+    if (list) {
+      const tagList = list.ordered ? "ol" : "ul";
+      rendered.push(`<${tagList}>${list.items.map((item) => `<li>${item}</li>`).join("")}</${tagList}>`);
+      list = null;
+    }
+  };
+
+  const renderCleanNode = (node: Node): string => {
     if (node.nodeType === Node.TEXT_NODE) return escapeHtml(node.textContent ?? "");
     if (node.nodeType !== Node.ELEMENT_NODE) return "";
     const el = node as HTMLElement;
     const tag = el.tagName.toLowerCase();
     if (el.hasAttribute("data-mce-style")) return "";
-    if (tag === "img" || tag === "script" || tag === "style" || tag === "iframe" || tag === "svg") return "";
-    const inner = Array.from(el.childNodes).map(renderNode).join("");
-    const inlineWrapper: Record<string, string | null> = { b: "strong", strong: "strong", i: "em", em: "em", u: "u", s: "del", strike: "del", del: "del", font: null, span: null, mark: null };
-    if (tag in inlineWrapper) {
-      const mapped = inlineWrapper[tag];
+    if (tag === "img" || tag === "script" || tag === "style" || tag === "iframe" || tag === "svg" || tag === "meta" || tag === "link" || tag === "title") return "";
+    const inner = Array.from(el.childNodes).map(renderCleanNode).join("");
+    const inline: Record<string, string | null> = { b: "strong", strong: "strong", i: "em", em: "em", u: "u", s: "del", strike: "del", del: "del", sub: "sub", sup: "sup", font: null, span: null, mark: null, small: null };
+    if (tag in inline) {
+      const mapped = inline[tag];
       return mapped ? `<${mapped}>${inner}</${mapped}>` : inner;
     }
     if (!PASTE_ALLOWED_TAGS.has(tag)) return inner;
     if (tag === "a") {
       const href = el.getAttribute("href")?.trim();
-      return href ? `<a href="${escapeHtml(href)}">${inner}</a>` : inner;
+      if (!href || /^\s*(?:javascript:|vbscript:|data:)/i.test(href)) return inner;
+      return `<a href="${escapeHtml(href)}">${inner}</a>`;
     }
     if (tag === "br") return "<br>";
+    if ((tag === "td" || tag === "th") && !inner.trim()) return "";
     return `<${tag}>${inner}</${tag}>`;
   };
+
   for (const child of Array.from(doc.body.childNodes)) {
-    const block = renderNode(child);
-    if (block.trim()) rendered.push(block);
+    let el: HTMLElement | null = null;
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      el = child as HTMLElement;
+    } else if (child.nodeType === Node.TEXT_NODE && (child.textContent ?? "").trim()) {
+      el = doc.createElement("p");
+      el.textContent = child.textContent ?? "";
+    }
+    if (!el) continue;
+    const tag = el.tagName.toLowerCase();
+    if (tag === "img" || tag === "script" || tag === "style" || tag === "iframe" || tag === "svg") continue;
+
+    if (tag === "ul" || tag === "ol") {
+      flushList();
+      const inner = renderCleanNode(el).trim();
+      if (inner) rendered.push(tag === "ol" ? `<ol>${inner}</ol>` : `<ul>${inner}</ul>`);
+      continue;
+    }
+    if (tag === "table" || tag === "blockquote" || tag === "pre") {
+      flushList();
+      const inner = renderCleanNode(el).trim();
+      if (inner) rendered.push(inner);
+      continue;
+    }
+    if (/^h[1-6]$/.test(tag)) {
+      flushList();
+      const level = tag === "h1" ? "2" : tag === "h5" || tag === "h6" ? "4" : tag.replace("h", "");
+      const inner = renderCleanNode(el).trim();
+      if (inner) rendered.push(`<h${level}>${inner}</h${level}>`);
+      continue;
+    }
+
+    const text = (el.textContent ?? "").replace(/\s+/g, " ").trim();
+    const marker = text.match(/^\s*(?:\d+[.)]|[-*•])\s+/);
+    if (marker) {
+      const ordered = /^\d+[.)]/.test(text);
+      const clone = el.cloneNode(true) as HTMLElement;
+      stripLeadingListMarker(clone);
+      const itemHtml = renderCleanNode(clone).trim() || escapeHtml(text.replace(/^\s*(?:\d+[.)]|[-*•])\s+/, ""));
+      if (!itemHtml) continue;
+      if (!list || list.ordered !== ordered) {
+        flushList();
+        list = { ordered, items: [] };
+      }
+      list.items.push(itemHtml);
+      continue;
+    }
+    flushList();
+    const inner = renderCleanNode(el).trim();
+    if (!inner) continue;
+    const headingLike = PASTE_HEADING_RE.test(tag) && text.length > 0 && text.length <= 90 && text.split(/\s+/).length <= 9 && !/[.!?:;,]$/.test(text) && /[A-Za-z0-9]/.test(text);
+    rendered.push(headingLike ? `<h2>${inner}</h2>` : `<p>${inner}</p>`);
   }
-  return rendered.join("\n").replace(/(<ul>[^]*?<\/ul>)/g, (m) => m).replace(/\n{3,}/g, "\n\n");
+  flushList();
+  return rendered.join("\n");
 }
 
 function plainTextToBlogHtml(text: string): string {
