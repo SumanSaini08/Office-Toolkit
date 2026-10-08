@@ -92,7 +92,7 @@ export const fallbackContent: OfficeToolkitContent = {
       readTime: "6 min read",
       publishedAt: "2026-08-30",
       content: "A resume is not a full autobiography. It is a clear invitation to continue the conversation.\n\nUse familiar section labels, keep your strongest experience near the top, and make every bullet earn its space. A strong bullet usually starts with an action, names the work, and gives the reader a result or useful scale.\n\nKeep the formatting calm. One readable typeface, consistent dates, and generous line spacing will do more for comprehension than a crowded collection of decorative elements.",
-      seo: { metaTitle: "How to Make a Resume Easier to Read", metaDescription: "Recruiters skim first. Learn a simple resume hierarchy that helps the right details survive the first pass, with clear sections, strong bullets and calm formatting." },
+      seo: { metaTitle: "How to Make a Resume Easier to Read", metaDescription: "Recruiters skim first. Learn a simple resume hierarchy that helps the right details survive the first pass, with clear sections, strong bullets and calm." },
     },
     {
       id: "signing-with-confidence",
@@ -103,7 +103,7 @@ export const fallbackContent: OfficeToolkitContent = {
       readTime: "4 min read",
       publishedAt: "2026-08-30",
       content: "The best digital signature is the one that works wherever you need it. Leave enough breathing room around the mark, choose a dark ink for light documents, and test it at the size it will actually appear.\n\nTyping your name can be a useful alternative when you need a repeatable sign-off. Choose a style that feels like you, keep the color consistent, and export with transparency so the image sits naturally on a contract, invoice, or letter.",
-      seo: { metaTitle: "Professional E-signature Tips – How to Sign", metaDescription: "A professional e-signature needs to be legible, consistent and easy to place. Simple tips to draw, type and export digital signatures that look clean on contracts." },
+      seo: { metaTitle: "Professional E-signature Tips – How to Sign", metaDescription: "A professional e-signature needs to be legible, consistent and easy to place. Simple tips to draw, type and export digital signatures that look clean on." },
     },
   ],
   signatureTemplates: generatedSignatureTemplates,

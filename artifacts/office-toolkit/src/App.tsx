@@ -4,8 +4,8 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
-import { ToolPage } from '@/pages/ToolPages';
-import { toolFooterColumns } from '@/lib/tools';
+import { ToolsIndexPage, ToolPage } from '@/pages/ToolPages';
+import { toolFooterColumns, toolUseCases } from '@/lib/tools';
 import { YouMightAlsoNeed, invoiceToolUseCases } from '@/components/RelatedTools';
 import { AdminPage, AdminLoginPage, BlogPage } from '@/pages/ContentPages';
 import { professionalSignatureFonts, useOfficeToolkitContent } from '@/lib/content';
@@ -158,6 +158,7 @@ function Footer() {
               <ul className="mt-4 space-y-2.5 text-sm font-medium text-[hsl(var(--muted-foreground))]">
                 <li><Link href="/e-signature-maker" data-testid="link-footer-signature" className="flex min-h-11 items-center transition-colors hover:text-[hsl(var(--primary))]">E-signature tool</Link></li>
                 <li><Link href="/invoice-generator" data-testid="link-footer-invoice" className="flex min-h-11 items-center transition-colors hover:text-[hsl(var(--primary))]">Invoice generator</Link></li>
+                <li><Link href="/tools" data-testid="link-footer-tools" className="flex min-h-11 items-center transition-colors hover:text-[hsl(var(--primary))]">All tools</Link></li>
               </ul>
             </div>
               <div>
@@ -291,7 +292,22 @@ function Home() {
       <section id="tools" className="mx-auto max-w-6xl px-5 py-16 lg:px-8 lg:py-24">
         <SectionHeading eyebrow="Two things, done well" title="Two free online tools, no signup, done well" description="Built for the in-between moments: a client needs an invoice, and a document needs your name on it." />
         <div className="mt-12 grid gap-6 md:grid-cols-2"><ToolCard id="signature" number="01 / SIGN" /><ToolCard id="invoice" number="02 / BILL" /></div>
-        <p className="mt-12 max-w-3xl text-base leading-7 text-[hsl(var(--muted-foreground))]">Both tools were designed together and share one rulebook: open instantly, skip the account screen, keep everything on this device, and end with a finished file. The tools differ in what they make, not in how they treat you — if you can use one, you already know how to use the other.</p>
+        <div className="mt-14">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <p className="max-w-3xl text-base leading-7 text-[hsl(var(--muted-foreground))]">Both makers share one rulebook: open instantly, skip the account screen, keep everything on this device, and end with a finished file. Beyond the two makers, the toolkit also ships a focused format for every job we hear about most — each one a ready-to-use workflow for a specific document.</p>
+            <Link href="/tools" data-testid="link-home-all-tools" className="btn-press inline-flex min-h-11 items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 text-sm font-bold text-[hsl(var(--primary-foreground))] shadow-[0_3px_0_hsl(var(--shadow-color)/.16)]">All free tools <ArrowRight size={17} /></Link>
+          </div>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {toolUseCases.map((tool) => (
+              <Link key={tool.slug} href={`/tools/${tool.slug}`} data-testid={`home-tool-${tool.slug}`} className="group flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3.5 transition-colors hover:border-[hsl(var(--primary)/.5)]">
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]">{tool.category === 'esignature' ? <PenLine size={16} /> : <ReceiptText size={16} />}</span>
+                <span className="min-w-0 flex-1 text-sm font-bold text-[hsl(var(--foreground))] group-hover:text-[hsl(var(--primary))]">{tool.title}</span>
+                <ArrowRight size={15} className="shrink-0 text-[hsl(var(--muted-foreground))] transition-transform group-hover:translate-x-1 group-hover:text-[hsl(var(--primary))]" />
+              </Link>
+            ))}
+            <Link href="/tools" data-testid="home-tool-all" className="group flex items-center justify-center gap-2 rounded-xl border border-dashed border-[hsl(var(--primary)/.4)] bg-[hsl(var(--secondary)/.3)] px-4 py-3.5 text-sm font-bold text-[hsl(var(--primary))]">See every tool on one page <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" /></Link>
+          </div>
+        </div>
       </section>
       <section className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-16 lg:grid-cols-[.9fr_1.1fr] lg:px-8 lg:py-24"><div><p className="font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--accent))]">The quiet promise</p><h2 className="mt-4 max-w-md font-display text-4xl font-bold leading-[1] tracking-[-.05em]">Your work stays yours.</h2></div><div className="grid gap-7 sm:grid-cols-3">{[['01', 'No account', 'Open a tool and get to work. There is no profile to create or password to forget.'], ['02', 'Local first', 'Your files and drafts live in this browser. We do not route them through a server.'], ['03', 'Useful output', 'Export a polished file that works outside this tab — PNG, PDF, or JSON.']].map(([n, h, p]) => <div key={n} className="border-l border-[hsl(var(--primary-foreground)/.22)] pl-4"><span className="font-mono-ui text-[10px] text-[hsl(var(--accent))]">{n}</span><h3 className="mt-4 font-display text-xl font-bold">{h}</h3><p className="mt-2 text-sm leading-6 text-[hsl(var(--primary-foreground)/.7)]">{p}</p></div>)}</div></div>
@@ -781,7 +797,7 @@ function TrailingSlashGuard() {
 }
 
 function Router() {
-  return <ErrorBoundary><TrailingSlashGuard /><Switch><Route path="/admin/login" component={AdminLoginPage} /><Route path="/admin/blog/edit/:id" component={AdminPage} /><Route path="/admin/drafts" component={AdminPage} /><Route path="/admin/published" component={AdminPage} /><Route path="/admin/blog" component={AdminPage} /><Route path="/admin/settings" component={AdminPage} /><Route path="/admin" component={AdminPage} /><Route><Shell><Suspense fallback={null}><Switch><Route path="/" component={Home} /><Route path="/e-signature-maker" component={ESignatureMaker} /><Route path="/invoice-generator" component={InvoiceGenerator} /><Route path="/blog/:slug" component={BlogPage} /><Route path="/blog" component={BlogPage} /><Route path="/contact" component={ContactPage} /><Route path="/privacy" component={PrivacyPage} /><Route path="/about" component={About} /><Route path="/tools/:slug" component={ToolPage} /><Route component={NotFound} /></Switch></Suspense></Shell></Route></Switch></ErrorBoundary>;
+  return <ErrorBoundary><TrailingSlashGuard /><Switch><Route path="/admin/login" component={AdminLoginPage} /><Route path="/admin/blog/edit/:id" component={AdminPage} /><Route path="/admin/drafts" component={AdminPage} /><Route path="/admin/published" component={AdminPage} /><Route path="/admin/blog" component={AdminPage} /><Route path="/admin/settings" component={AdminPage} /><Route path="/admin" component={AdminPage} /><Route><Shell><Suspense fallback={null}><Switch><Route path="/" component={Home} /><Route path="/e-signature-maker" component={ESignatureMaker} /><Route path="/invoice-generator" component={InvoiceGenerator} /><Route path="/blog/:slug" component={BlogPage} /><Route path="/blog" component={BlogPage} /><Route path="/contact" component={ContactPage} /><Route path="/privacy" component={PrivacyPage} /><Route path="/about" component={About} /><Route path="/tools" component={ToolsIndexPage} /><Route path="/tools/:slug" component={ToolPage} /><Route component={NotFound} /></Switch></Suspense></Shell></Route></Switch></ErrorBoundary>;
 }
 
 function App() {
