@@ -33,6 +33,7 @@ export const toolUseCases: ToolUseCase[] = [
     body: [
       "The difficulty with Word files has always been format. A document that looks right on one machine can shift on another, and a signed-but-editable .docx is open to change long after the deal is done. Exporting the signed Word file as a PDF fixes both problems: the layout is locked exactly as it left your screen, and the final copy cannot be quietly edited.",
       "Signing is faster than people expect. There is no account to create, nothing to install, and no waiting for a digital signature certificate. You draw or type your mark once, drag it into place beside the closing line, and the signed copy is ready to attach to your reply. For a business that signs five agreements a week, that is time that used to disappear into a printer queue.",
+      "One tip before you start: keep the final .docx intact and sign an exported PDF when you only need a paperwork copy. Word files are meant to be edited, so a signature inside the editable document can be moved or removed by accident; a signed PDF cannot be silently changed. The maker exports that clean copy for you, dated and ready to file. It also means the version you forward to a client, bank or HR desk is identical to the one you signed, which is exactly what a signature is supposed to prove.",
     ],
     useCases: [
       { title: "Dealer and vendor agreements", body: "Both sides sign the same .docx in the browser, then trade the final PDF for records and filings." },
@@ -74,6 +75,7 @@ export const toolUseCases: ToolUseCase[] = [
     body: [
       "A signed spreadsheet is about accountability, not decoration. When weekly stock counts or expense sheets carry a dated signature, it is clear who checked the figures and when. Exporting the workbook hand-in-hand with the signature gives you a single record that shows the numbers at the moment of approval — later edits to the workbook no longer affect the signed version.",
       "Nothing about the workflow changes how you work in Excel. You prepare the sheet as usual, upload the final version, place your mark near the approval row, and download the signed PDF. The original workbook stays untouched, so your formulas, dropdowns and totals are never at risk while you sign.",
+      "Spreadsheet data deserves one more caution: check the visible columns before you sign. A signature on a sheet implies the content around it has been reviewed, so hide or delete helper columns and calculation notes that a recipient should not see. Letting the signed PDF show only what matters — totals, status, approvals — keeps the document honest. You can still keep the unfilled master file for the next cycle and sign a fresh export whenever a new figure is approved.",
     ],
     useCases: [
       { title: "Monthly stock and payment sheets", body: "A supervisor signs the monthly tracker, and the PDF becomes the file that goes to accounts." },
@@ -115,6 +117,7 @@ export const toolUseCases: ToolUseCase[] = [
     body: [
       "PDFs are signed so often precisely because they are hard to alter. Add a signature to one online and you are making a judgement: this version is the one I have read and agreed to. That is why it matters that the tool you use starts from the file as received — no re-encoding, no quality loss, no surprise page shifts in a submitted form.",
       "Most people sign several kinds of document each week: responses sent back to banks, proposals returned to clients, forms submitted to authorities. With a saved signature, the second sign takes seconds. The browser keeps your mark on your own device, so returning to it later never requires an account or a login.",
+      "The two most common questions are about size and position. If a form expects a signature, sign exactly on the marked line without scaling the image down to nothing, because a shrunken mark can look careless. Where no line exists, place the signature beside your printed name or the dated Accepted-by text and keep a consistent offset. Preview the page once before downloading, since the submitted file goes straight to a bank, authority or client that will file it as received.",
     ],
     useCases: [
       { title: "Vendor and client contracts", body: "Review the PDF, place your signature on the agreed pages and return the signed copy the same day." },
@@ -157,6 +160,7 @@ export const toolUseCases: ToolUseCase[] = [
     body: [
       "Contracts raise a fair question: is an e-signature enough for something legally binding? For the vast majority of commercial agreements — supply terms, service work, rent, consultants — a clear electronic signature recorded alongside the party name and date is accepted practice. Where a matter is genuinely sensitive, organisations simply print the signed PDF and keep the physical copy as well. The browser workflow gives you both options from the same file.",
       "Getting both parties to sign was always the slow part. With a shared PDF, the first party signs and sends, the second party signs from their phone or laptop, and the back-and-forth finishes in one round instead of three. Typing the party name and date beside each signature removes the most common objection to a digital contract: nobody can later claim they did not know what or when they signed for.",
+      "For multi-party contracts, agree the order of signing before you begin. The typical sequence is the initiating party first, then the counterparty, then any witness whose signature the contract mentions. Sign only what is there at the moment of signing, and keep drafts separate from the final version so nobody signs the wrong file. When both sides need to sign in one sitting, pass the PDF — one signs, the other opens the returned file and signs the copy, and the agreement is closed in a single round.",
     ],
     useCases: [
       { title: "Vendor and supplier agreements", body: "Sign supply terms and rate cards at the start of a working relationship, then file the final PDF." },
@@ -198,6 +202,7 @@ export const toolUseCases: ToolUseCase[] = [
     body: [
       "The moment between an offer and an acceptance is fragile. A candidate who has to print, sign, scan and email simply to say yes is a candidate who may keep browsing. Removing that friction — letting the candidate open the letter on a phone and sign in a minute — has a real effect on how many offers close. For small teams without an HR portal, this is the difference between a two-day handshake and a two-week silence.",
       "Both sides benefit from the paper trail. The candidate gets a dated, signed copy of the terms they accepted, so there is no guesswork about salary or the joining date. The employer gets an acceptance they can file instantly. If anything is queried later — a start date, a bonus clause — the signed PDF is the record everyone agreed to.",
+      "When the offer is signed matters as much as where the mark lands. Companies usually sign first to confirm the terms, and candidates sign second as acceptance; if the candidate signs first, both copies should still carry the same dates so the record is unambiguous. Export the signed letter immediately and store it beside the email that sent it. If a start date changes later, sign a small addendum rather than re-signing the whole letter, so the trail of what was promised when stays readable.",
     ],
     useCases: [
       { title: "New-hire offer letters", body: "HR sends the signed company copy; the candidate signs from any device and returns it immediately." },
@@ -239,6 +244,7 @@ export const toolUseCases: ToolUseCase[] = [
     body: [
       "A spreadsheet invoice is really a reusable calculation sheet. Once the header, item rows and total formulas are set, every new invoice is just a case of filling fresh values. That cuts out the repetitive formatting that wastes time at month-end, and it removes the arithmetic slips that happen when totals are typed by hand.",
       "The real test of an invoice format is how quickly a client can answer three questions: what am I paying for, how much, and by when. A clean layout with a visible subtotal, tax line and grand total answers all three in one glance. Because the format stays the same every month, your customers learn where to look — and that habit tends to mean faster payments.",
+      "When you reuse a template every month, small drift creeps in — a merged cell, an extra column, a rate overwritten by a keystroke. Keep a master copy read-only, fill in a fresh copy for each bill, and apply data validation to the rate and GST columns so invalid entries are rejected before they are printed. Reserve the last row of the sheet for a running total of the month, which makes checks and follow-ups one glance instead of a re-count.",
     ],
     useCases: [
       { title: "Weekly or monthly billing", body: "Reuse the same template for repeat clients and only change the dates, items and amounts." },
@@ -280,6 +286,7 @@ export const toolUseCases: ToolUseCase[] = [
     body: [
       "Word invoices suit businesses that want their invoice to look like their brand. The letterhead, colours and phrasing already sit in the company document; the invoice table simply extends the same visual language into a bill. Fifteen minutes of setup produces a template that works for years, with no software licence and no learning curve.",
       "The weakness of any Word invoice is the total. Because amounts are typed rather than calculated, a delivery typo can slip into the grand total and sit there until someone complains. The safeguard is discipline: fill the table, add the rows on screen, double-check the total against the line amounts, then export — and let the PDF be the version that leaves.",
+      "Because a Word invoice is free-form, add a done-check before you send: confirm the business name and address, the client details, the item table and the grand total all match the work delivered. Word does not recalculate totals for you, so verify the bottom number against the line amounts once, then export to PDF so the checked version is the one that leaves. Keep the editable file for corrections and the PDF as the record you and the client both refer to.",
     ],
     useCases: [
       { title: "Consultant and service invoices", body: "Use the branded Word layout for monthly retainers and project invoices." },
@@ -321,6 +328,7 @@ export const toolUseCases: ToolUseCase[] = [
     body: [
       "The job of a GST invoice is to say three things separately: what was sold, what it was worth before tax, and how much tax applied. When those three lines are clean, return filing becomes a copying exercise rather than a reconciliation puzzle. An invoice that buries the taxable value inside the total is an invoice that turns filing day into a headache.",
       "Consistency matters as much as accuracy. When every invoice from your business uses the same columns — buyer, item, HSN, quantity, rate, taxable value, tax — both your accountant and your records stay predictable. A generator that puts those columns in front of you every time keeps the format honest without demanding that you remember the layout.",
+      "Before you export, check the three numbers that banks and GST authorities compare: the invoice number, the taxable value and the tax split. These must match your filing records exactly, because matching inputs are what keep return filing a simple copying exercise. If a client needs a credit note later, reference the original invoice number on the new document so the trail stays clean. Small consistency habits here prevent the largest reconciliation headaches at quarter-end.",
     ],
     useCases: [
       { title: "Traders and wholesalers", body: "Raise sale bills with the right rate per item and keep the HSN visible for easy filing." },
@@ -362,6 +370,7 @@ export const toolUseCases: ToolUseCase[] = [
     body: [
       "For a freelancer, an invoice is a small sales document. It is not purely a record of work delivered; it is the professional close of a transaction. An invoice that lists the project, breaks the work into line items and states a due date says that the work was valuable, the value is measurable, and the payment is expected now. That framing alone moves payments along.",
       "Billing late or vaguely is one of the quiet habits that keeps freelancers short on cash. Sending the invoice on the day work is delivered — not at month-end — starts the payment clock immediately and attaches the bill to the work the client has just seen. A generator that produces the invoice in the same sitting as the handover makes that habit easy to keep.",
+      "Consistency is a freelancer's quiet pricing advantage. Send every invoice with the same sections — client, project, items, total, due date, payment details — so returning clients scan and confirm instead of hunting. State your payment terms in the same words every time, and follow up on the due date rather than a week later. The routine signals reliability at the exact moment you ask for money, and a client who has seen it dozens of times starts to trust it before the first call.",
     ],
     useCases: [
       { title: "Design and development projects", body: "Bill by milestone with a per-item breakdown of the phases delivered in each invoice." },
@@ -403,6 +412,7 @@ export const toolUseCases: ToolUseCase[] = [
     body: [
       "A quotation does two jobs at once. It captures the price, and it quietly demonstrates how carefully you run your business. A quote with the client's name spelled correctly, every item itemised, a total and a validity date reads as someone who has thought the job through. That impression frequently matters as much as the number itself, because buyers compare quotes across several vendors.",
       "A good quotation is also the seed of the invoice. When the client says yes, the same item rows, quantities and rates become the bill — no re-typing, no mismatch between what was quoted and what was charged. Reusing the identical structure across quote and invoice is what keeps clients confident about the final price.",
+      "Spell out what the quotation does and does not cover before discussion begins. Scope notes — what is included, what is extra, how long the price holds — prevent the most common disputes, because a clear validity period protects you against rising costs and itemised lines protect the client against surprises. When the quote is approved, keep the same layout as the final invoice so the client sees the quoted price turn into the billed price without a single conversion step, and the two documents match line by line.",
     ],
     useCases: [
       { title: "Workshop and installation quotes", body: "Itemise parts and labour separately so the client sees exactly what the total is made of." },
