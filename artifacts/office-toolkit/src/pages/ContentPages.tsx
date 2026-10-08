@@ -142,7 +142,7 @@ function BlogPage() {
             )}
             <div className="mt-10 text-base leading-8 text-[hsl(var(--muted-foreground))]">
               {hasHtml ? (
-                <div className="space-y-4 [&_div]:mb-1 [&_div]:leading-8 [&_p]:leading-8 [&_li]:leading-8 [&_strong]:font-bold [&_h1]:mt-10 [&_h1]:font-display [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-[-.03em] [&_h2]:mt-10 [&_h2]:font-display [&_h2]:text-[1.65rem] [&_h2]:font-bold [&_h2]:tracking-[-.03em] [&_h2]:first:mt-0 [&_h3]:mt-9 [&_h3]:font-display [&_h3]:text-[1.35rem] [&_h3]:font-bold [&_h3]:tracking-[-.02em] [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-7 [&_ol]:pl-7 [&_ul]:space-y-1.5 [&_ol]:space-y-1.5 [&_table]:my-6 [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-[hsl(var(--border))] [&_th]:bg-[hsl(var(--secondary)/.4)] [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-[hsl(var(--border))] [&_td]:p-2 [&_blockquote]:my-6 [&_blockquote]:border-l-2 [&_blockquote]:border-[hsl(var(--primary))] [&_blockquote]:pl-4 [&_blockquote]:italic" dangerouslySetInnerHTML={{ __html: postBody }} />
+                <div className="space-y-4 [&_div]:mb-1 [&_div]:leading-8 [&_p]:leading-8 [&_li]:leading-8 [&_strong]:font-bold [&_h1]:mt-10 [&_h1]:font-display [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-[-.03em] [&_h2]:mt-10 [&_h2]:font-display [&_h2]:text-[1.65rem] [&_h2]:font-bold [&_h2]:tracking-[-.03em] [&_h2]:first:mt-0 [&_h3]:mt-9 [&_h3]:font-display [&_h3]:text-[1.35rem] [&_h3]:font-bold [&_h3]:tracking-[-.02em] [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-7 [&_ol]:pl-7 [&_ul]:space-y-1.5 [&_ol]:space-y-1.5 [&_table]:my-6 [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-[hsl(var(--border))] [&_th]:bg-[hsl(var(--secondary)/.4)] [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-[hsl(var(--border))] [&_td]:p-2 [&_blockquote]:my-6 [&_blockquote]:border-l-2 [&_blockquote]:border-[hsl(var(--primary))] [&_blockquote]:pl-4 [&_blockquote]:italic [&_li]:text-[hsl(var(--foreground))] [&_b]:text-[hsl(var(--foreground))] [&_strong]:text-[hsl(var(--foreground))] [&_a]:text-[hsl(var(--primary))] [&_a]:underline" dangerouslySetInnerHTML={{ __html: postBody }} />
               ) : (
                 <div className="space-y-6">{post.content.split(/\n\n+/).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
               )}
@@ -1042,6 +1042,24 @@ function PostEditor({ post, categories, update, onSave, onSaveDraft, onDelete }:
   );
 }
 
+function mergeAdjacentLists(root: HTMLElement): void {
+  let node = root.firstElementChild;
+  while (node) {
+    if (node.tagName === "OL" || node.tagName === "UL") {
+      const tag = node.tagName;
+      let next = node.nextElementSibling;
+      while (next && next.tagName === tag) {
+        while (next.firstElementChild) node.appendChild(next.firstElementChild);
+        next.remove();
+        next = node.nextElementSibling;
+      }
+      node = node.nextElementSibling;
+    } else {
+      node = node.nextElementSibling;
+    }
+  }
+}
+
 function RichTextEditor({ initial, onChange, onPasteText }: { initial: string; onChange: (html: string) => void; onPasteText?: (text: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -1049,7 +1067,11 @@ function RichTextEditor({ initial, onChange, onPasteText }: { initial: string; o
     if (ref.current && ref.current.innerHTML !== initial) ref.current.innerHTML = initial;
   }, [initial]);
 
-  const sync = () => onChange(ref.current?.innerHTML ?? "");
+  const sync = () => {
+    const el = ref.current;
+    if (el) mergeAdjacentLists(el);
+    onChange(el?.innerHTML ?? "");
+  };
   const run = (command: string, value?: string) => {
     ref.current?.focus();
     document.execCommand(command, false, value);
@@ -1087,15 +1109,15 @@ function RichTextEditor({ initial, onChange, onPasteText }: { initial: string; o
     const text = block.textContent ?? "";
     const marker = text.match(/^(\s*(?:\d+[.)]|[-*•])\s+)/);
     if (!marker || text.length > 90) return;
+    const markerText = marker[0].trim();
+    const firstChild = block.firstElementChild;
+    if (firstChild && (firstChild.tagName === "STRONG" || firstChild.tagName === "B") && (firstChild.textContent ?? "").trim().startsWith(markerText)) return;
     event.preventDefault();
-    const ordered = /^\s*\d+[.)]/.test(text);
-    stripLeadingListMarker(block as HTMLElement);
     const wrap = document.createRange();
     wrap.selectNodeContents(block);
     selection.removeAllRanges();
     selection.addRange(wrap);
     try { document.execCommand("bold", false); } catch { /* ignore */ }
-    try { document.execCommand(ordered ? "insertOrderedList" : "insertUnorderedList", false); } catch { /* ignore */ }
     sync();
   };
 
@@ -1487,6 +1509,37 @@ const pLooksLikeHeading = (text: string) => {
 const STEP_LEADIN_RE = /(look like this|workflow(?: can| could| would)?(?: look)? like|as follows|steps?(?: below)? to(?: follow)?|checklist|can look like|process looks like|such as|sample steps|example)\s*[;:]?$/i;
 const STEP_SUMMARY_RE = /^(this|that|these|those|it|so|in short|overall|in the end|in summary|ultimately)\b/i;
 
+function mergeAdjacentListHtml(html: string): string {
+  const out: string[] = [];
+  const re = /<(ol|ul)(?:\s[^>]*)?>([\s\S]*?)<\/\1>/gi;
+  let last: { tag: string; items: string[] } | null = null;
+  const flush = () => {
+    if (last) {
+      out.push(`<${last.tag}>${last.items.join("")}</${last.tag}>`);
+      last = null;
+    }
+  };
+  let from = 0;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(html))) {
+    if (match.index > from) {
+      flush();
+      out.push(html.slice(from, match.index));
+    }
+    const tag = match[1].toLowerCase();
+    const items = Array.from(match[2].matchAll(/<li[\s\S]*?<\/li>/gi), (m) => m[0]);
+    if (last && last.tag === tag) last.items.push(...items);
+    else {
+      flush();
+      last = { tag, items };
+    }
+    from = match.index + match[0].length;
+  }
+  flush();
+  if (from < html.length) out.push(html.slice(from));
+  return out.join("");
+}
+
 function healContentHtml(content: string): string {
   let html = String(content ?? "").replace(/\r\n/g, "\n").trim();
   if (!html) return "";
@@ -1497,6 +1550,7 @@ function healContentHtml(content: string): string {
   html = html.replace(/<p[^>]*>\s*<\/p>/g, "");
   html = html.replace(/<li>\s*<\/li>/g, "");
   html = html.replace(/<(?:ul|ol)>\s*<\/(?:ul|ol)>/g, "");
+  html = mergeAdjacentListHtml(html);
 
   html = html.replace(/<p[^>]*>([^<]*)<\/p>/g, (match, text) => (pLooksLikeHeading(text) ? `<h2>${text.trim()}</h2>` : match));
 
