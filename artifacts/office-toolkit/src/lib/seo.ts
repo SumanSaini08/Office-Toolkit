@@ -23,10 +23,7 @@ export const OG_IMAGE_WIDTH = 1200;
 export const OG_IMAGE_HEIGHT = 630;
 
 export function applyPageMeta(input: PageMetaInput) {
-  const title =
-    input.includeBrand === false
-      ? input.title
-      : `${input.title} — ${BRAND}`;
+  const title = input.title;
   const path = input.canonical ?? window.location.pathname;
   const url = `${window.location.origin}${path}`;
   const image =

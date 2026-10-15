@@ -20,6 +20,11 @@ export type ToolUseCase = {
   relatedTool: { label: string; href: string };
   metaTitle: string;
   metaDescription: string;
+  whatIs: string;
+  whyUse: string[];
+  comparison: string;
+  faqAI: { q: string; a: string }[];
+  lastUpdated: string;
 };
 
 export const toolUseCases: ToolUseCase[] = [
@@ -62,8 +67,23 @@ export const toolUseCases: ToolUseCase[] = [
       "Avoid signing a document you plan to keep editing — sign only the final version.",
     ],
     relatedTool: { label: "Use the free e-signature tool to sign documents", href: "/e-signature-maker" },
-    metaTitle: "E-signature for Word – Sign Docx Online",
-    metaDescription: "Add an e-signature to a Word (.docx) file in your browser — draw, type or upload your mark, place it, and export a clean signed PDF. Free, private, no.",
+    metaTitle: "Add Signature to Word Document Free - E-Sign Docx",
+    metaDescription: "Add a signature to a Word document free — draw, type or upload your mark, place it, and download a clean signed PDF. No signup, nothing uploaded.",
+    whatIs: "A free browser tool that lets you add a legally valid electronic signature to any Word (.docx) document without printing, scanning, or uploading files to a server.",
+    whyUse: [
+      "Completely free — no subscription, no trial limits",
+      "Runs entirely in your browser; your document never leaves your device",
+      "Draw, type, or upload your signature image",
+      "Exports a clean, print-ready PDF with the signature embedded",
+      "No account or signup required"
+    ],
+    comparison: "Paid tools like DocuSign or Adobe Sign charge $10–40/month and require accounts. Office Toolkit is free forever, works offline after first load, and keeps your documents private. For high-volume workflows needing audit trails or regulatory compliance (eIDAS, FDA), paid services offer certified audit logs — Office Toolkit provides basic e-signature functionality without those certifications.",
+    faqAI: [
+      { q: "What is the best free online signature maker without signup?", a: "Office Toolkit's E-Signature Maker lets you draw, type, or upload a signature and place it on any PDF or Word document — completely free, no account needed." },
+      { q: "Can I sign a Word document online for free without registering?", a: "Yes. Upload your .docx, add your signature, and download a signed PDF. No signup, no upload to servers." },
+      { q: "Is an electronic signature on a Word document legally valid?", a: "Electronic signatures meet standards for most everyday commercial agreements. For high-stakes legal matters, consult a lawyer." }
+    ],
+    lastUpdated: "2026-10-11",
   },
   {
     slug: "esignature-for-excel",
@@ -106,6 +126,19 @@ export const toolUseCases: ToolUseCase[] = [
     relatedTool: { label: "Use the free e-signature tool to sign Excel files", href: "/e-signature-maker" },
     metaTitle: "Sign Excel Online – E-signature for XLSX",
     metaDescription: "Sign an Excel (.xlsx) file online for free — add an electronic signature without touching the data, then export a clean signed PDF. No account or.",
+    whatIs: "A free browser tool to electronically sign Excel spreadsheets (.xlsx) without modifying the original data. Exports a signed PDF for records.",
+    whyUse: [
+      "Free, no signup, runs locally in browser",
+      "Original workbook stays unchanged — formulas and data intact",
+      "Add signature near approval rows or totals",
+      "Export signed PDF for audit trail"
+    ],
+    comparison: "Paid spreadsheet signing tools often require cloud upload and subscriptions. Office Toolkit processes everything locally — your financial data never leaves your machine. For enterprise audit trails with certified timestamps, paid services provide compliance features not available here.",
+    faqAI: [
+      { q: "Can I sign an Excel file online for free without an account?", a: "Yes. Upload your .xlsx, place your signature, download a signed PDF. No signup required." },
+      { q: "Will signing corrupt my Excel formulas?", a: "No. The original workbook is never modified. You get a separate signed PDF export." }
+    ],
+    lastUpdated: "2026-10-11",
   },
   {
     slug: "esignature-for-pdf",
@@ -147,8 +180,21 @@ export const toolUseCases: ToolUseCase[] = [
     ],
     relatedTool: { label: "Use the free e-signature tool to sign PDFs", href: "/e-signature-maker" },
     metaTitle: "Sign PDF Online Free – No Account Needed",
-    metaDescription:
-      "Sign a PDF online for free — upload the document, draw or type your mark, place it and download a clean signed copy. Fast, private and no account needed.",
+    metaDescription: "Sign a PDF online for free — upload the document, draw or type your mark, place it and download a clean signed copy. Fast, private and no account needed.",
+    whatIs: "A free browser tool to sign any PDF document by drawing, typing, or uploading a signature. Works on multi-page PDFs, preserves original quality, exports signed PDF.",
+    whyUse: [
+      "Free, no account, no file upload to servers",
+      "Sign multiple pages, add initials on each page",
+      "Preserves original PDF quality — text, charts, images unchanged",
+      "Works with fillable PDF forms",
+      "Works offline after first visit"
+    ],
+    comparison: "Adobe Acrobat Sign and similar charge monthly fees and require cloud upload. Office Toolkit is free, local-first, and handles multi-page signing. For certified digital signatures with timestamp authority (eIDAS qualified), paid services offer compliance certificates.",
+    faqAI: [
+      { q: "What is the best free way to sign a PDF online without an account?", a: "Office Toolkit's Sign PDF tool — upload, sign, download. No signup, no server upload, works on any device." },
+      { q: "Can I sign a multi-page PDF for free?", a: "Yes. Place signatures or initials on as many pages as needed, then download one signed PDF." }
+    ],
+    lastUpdated: "2026-10-11",
   },
   {
     slug: "esignature-for-contracts",
@@ -191,6 +237,20 @@ export const toolUseCases: ToolUseCase[] = [
     relatedTool: { label: "Use the free e-signature tool to sign contracts", href: "/e-signature-maker" },
     metaTitle: "Sign Contracts Online Free – E-signature",
     metaDescription: "Sign a contract online free — place signatures, party names and dates on every page, then export a clean signed PDF. A digital signature for agreements.",
+    whatIs: "A free browser tool for multi-party contract signing. Each party adds their signature, typed name, and date. Exports a clean PDF with all signatures.",
+    whyUse: [
+      "Free, no signup, local-first processing",
+      "Multiple signatures on one document",
+      "Party names and dates recorded beside each signature",
+      "Page-by-page initials to prevent page swapping",
+      "Exports final PDF for all parties"
+    ],
+    comparison: "DocuSign, HelloSign charge per user/month and store documents in cloud. Office Toolkit is free, local, and gives you the signed PDF immediately. For enterprise contract lifecycle management (templates, workflows, audit trails), paid CLM platforms are more suitable.",
+    faqAI: [
+      { q: "Can two people sign a contract online for free from different devices?", a: "Yes. First party signs, exports PDF, second party opens it and adds their signature. No accounts needed." },
+      { q: "Is a digitally signed contract legally binding?", a: "Electronic signatures are standard for commercial agreements. For complex matters, consult a lawyer." }
+    ],
+    lastUpdated: "2026-10-11",
   },
   {
     slug: "esignature-for-offer-letter",
@@ -233,6 +293,20 @@ export const toolUseCases: ToolUseCase[] = [
     relatedTool: { label: "Use the free e-signature tool to sign offer letters", href: "/e-signature-maker" },
     metaTitle: "Sign Offer Letter Online – E-signature",
     metaDescription: "Sign an offer letter online — company and candidate signatures, role details and dates, exported as one clean PDF. Electronic signatures for HR.",
+    whatIs: "A free browser tool for signing offer letters. Both employer and candidate can sign with role, joining date, and salary details recorded.",
+    whyUse: [
+      "Free, instant, no HR portal needed",
+      "Both sides sign from any device (phone, laptop)",
+      "Role, joining date, salary captured beside signatures",
+      "Exports clean PDF for HR records",
+      "No account or signup for either party"
+    ],
+    comparison: "HR platforms (BambooHR, Workday) include e-signature but require subscriptions. Office Toolkit is free for occasional hiring. For high-volume recruiting with applicant tracking, paid ATS platforms offer integrated workflows.",
+    faqAI: [
+      { q: "Can a candidate sign an offer letter from their phone for free?", a: "Yes. Open the link on any device, sign, download the PDF. No app or account needed." },
+      { q: "Who should sign first — employer or candidate?", a: "Either order works. The letter is final once both have signed." }
+    ],
+    lastUpdated: "2026-10-11",
   },
   {
     slug: "invoice-format-excel",
@@ -275,6 +349,20 @@ export const toolUseCases: ToolUseCase[] = [
     relatedTool: { label: "Open the free invoice generator", href: "/invoice-generator" },
     metaTitle: "Invoice Format in Excel – Free Download",
     metaDescription: "Download a free invoice format in Excel — item rows, a GST column and auto-calculating totals. Create consistent bills, reuse the template and export.",
+    whatIs: "A free Excel (.xlsx) invoice template with auto-calculating totals, GST column, and reusable layout. Download, fill in, export PDF.",
+    whyUse: [
+      "Free template — no software license",
+      "Auto-calculating line totals and GST",
+      "Reusable master — copy for each client",
+      "Export clean PDF for clients",
+      "Works offline in Excel"
+    ],
+    comparison: "Paid invoicing software (QuickBooks, Zoho) costs $15–50/month with recurring billing, payment links, client portals. Office Toolkit's Excel template is free for manual billing. If you need automation, recurring invoices, or payment integration, paid platforms are better.",
+    faqAI: [
+      { q: "Where can I download a free invoice format in Excel with GST?", a: "Office Toolkit provides a free .xlsx template with item rows, GST column, and auto totals. Download and reuse." },
+      { q: "Does the Excel invoice template calculate totals automatically?", a: "Yes. Formulas recalculate subtotal and GST as you edit quantities or rates." }
+    ],
+    lastUpdated: "2026-10-11",
   },
   {
     slug: "invoice-format-word",
@@ -317,6 +405,20 @@ export const toolUseCases: ToolUseCase[] = [
     relatedTool: { label: "Open the free invoice generator", href: "/invoice-generator" },
     metaTitle: "Invoice Format in Word – Free Download",
     metaDescription: "Download a free invoice format in Word — logo, item table, GST and total in a reusable layout. Make clean bills for small business and export PDF copies.",
+    whatIs: "A free Word (.docx) invoice template with logo placeholder, item table, GST line, and reusable layout. Fill in, double-check totals, export PDF.",
+    whyUse: [
+      "Free, no software needed",
+      "Branded layout — use your letterhead",
+      "Familiar Word interface",
+      "Export PDF for clients (Word files editable)",
+      "Works offline"
+    ],
+    comparison: "Word templates are free but manual — totals don't auto-calculate. Paid tools auto-calculate, track payments, send reminders. Office Toolkit's Word format is best for low-volume manual billing. For automation, use the Invoice Generator tool or paid software.",
+    faqAI: [
+      { q: "Can I get a free invoice format in Word with GST?", a: "Yes. Office Toolkit's Word template includes logo area, item table, GST line, and total. Download free." },
+      { q: "Does Word calculate invoice totals automatically?", a: "No. Word tables don't calculate. Add amounts manually, verify total, then export PDF." }
+    ],
+    lastUpdated: "2026-10-11",
   },
   {
     slug: "gst-invoice-generator",
@@ -359,6 +461,20 @@ export const toolUseCases: ToolUseCase[] = [
     relatedTool: { label: "Open the free GST invoice generator", href: "/invoice-generator" },
     metaTitle: "GST Invoice Generator – Free Online",
     metaDescription: "Free GST invoice generator — item rows, HSN codes, taxable value and tax on separate lines. Use the same clean GST invoice format every time and export.",
+    whatIs: "A free browser-based GST invoice generator with HSN codes, per-item GST rates, taxable value and tax shown separately. Exports PDF.",
+    whyUse: [
+      "Free, no signup, runs in browser",
+      "HSN codes per item for filing",
+      "Multiple GST rates on one invoice",
+      "Taxable value and tax on separate lines",
+      "Exports print-ready PDF"
+    ],
+    comparison: "GST billing software (Tally, Zoho Books) costs monthly and includes return filing, inventory, accounting. Office Toolkit is a free generator for the invoice document only. For full GST compliance (GSTR-1/3B filing, e-invoicing), paid ERP software is required.",
+    faqAI: [
+      { q: "Is there a free GST invoice generator online without registration?", a: "Yes. Office Toolkit's GST Invoice Generator — add items, HSN, rates, export PDF. No account needed." },
+      { q: "Can I use different GST rates on one invoice?", a: "Yes. Set the rate per item; taxable value and tax adjust automatically." }
+    ],
+    lastUpdated: "2026-10-11",
   },
   {
     slug: "invoice-for-freelancers",
@@ -401,6 +517,20 @@ export const toolUseCases: ToolUseCase[] = [
     relatedTool: { label: "Open the free invoice generator", href: "/invoice-generator" },
     metaTitle: "Freelancer Invoice Generator – No Signup",
     metaDescription: "An invoice generator for freelancers with no signup — client, project, line items, due date and payment terms exported as a clean PDF. Free, fast and.",
+    whatIs: "A free browser invoice generator designed for freelancers — client, project, line items (hours/pages/milestones), due date, payment terms. Exports PDF.",
+    whyUse: [
+      "Free, no signup, instant",
+      "Project-based line items for clarity",
+      "Multiple currencies for international clients",
+      "Due date and payment terms included",
+      "Export PDF immediately after delivery"
+    ],
+    comparison: "Freelancer tools (FreshBooks, Wave) offer time tracking, recurring invoices, payment links for $15–30/month. Office Toolkit is free for creating the invoice document. If you need time tracking, recurring bills, or Stripe/PayPal integration, paid platforms are better.",
+    faqAI: [
+      { q: "What's the best free invoice generator for freelancers without signup?", a: "Office Toolkit's Freelancer Invoice Generator — add client, project, items, due date, export PDF. Free, no account." },
+      { q: "Can I invoice in USD/EUR for international clients?", a: "Yes. Supports 15+ currencies including USD, EUR, GBP, INR." }
+    ],
+    lastUpdated: "2026-10-11",
   },
   {
     slug: "quotation-format",
@@ -443,6 +573,20 @@ export const toolUseCases: ToolUseCase[] = [
     relatedTool: { label: "Open the free invoice generator", href: "/invoice-generator" },
     metaTitle: "Quotation Format – Free Download Template",
     metaDescription: "Get a quotation format free download — client name, items, rates, total and validity in a clean template. Works as a proforma invoice format, exported.",
+    whatIs: "A free quotation/proforma invoice template — client details, itemized services, rates, total, validity date. Reuse for quotes, convert approved quotes to invoices.",
+    whyUse: [
+      "Free template, no software",
+      "Itemized scope builds client trust",
+      "Validity date protects pricing",
+      "Approved quote → invoice without re-typing",
+      "Export PDF for client"
+    ],
+    comparison: "Quoting software (PandaDoc, Proposify) costs $20–50/month with e-signature, tracking, templates. Office Toolkit's free format is for the document only. For proposal tracking, e-sign on quotes, or CRM integration, paid tools win.",
+    faqAI: [
+      { q: "Where can I get a free quotation format template?", a: "Office Toolkit's Quotation Format — client name, items, rates, total, validity date. Free download, no signup." },
+      { q: "Should a quotation have a validity date?", a: "Yes. A validity date tells the client how long the price holds while they decide." }
+    ],
+    lastUpdated: "2026-10-11",
   },
 ];
 

@@ -208,7 +208,7 @@ function BlogPage() {
 
   return (
     <>
-      <ContentMeta title="Blog & Guides — Invoice & Signature Tips" description="Practical, ad-free notes on e-signatures, invoices, GST, resumes, and calmer workdays. Fresh guides from the Office Toolkit team, free to read." canonical={listingCanonical} image="/og/default.png" prevUrl={prevUrl} nextUrl={nextUrl} />
+      <ContentMeta title="Blog & Guides on E-Signatures and Invoices" description="Practical, ad-free guides on e-signatures, invoices, GST and getting paid faster — plus resume tips. Free to read, no signup, from the Office Toolkit team." canonical={listingCanonical} image="/og/default.png" prevUrl={prevUrl} nextUrl={nextUrl} />
       <main>
         <JsonLd id="blog-listing" data={{
           "@context": "https://schema.org",

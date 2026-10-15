@@ -1,6 +1,47 @@
+# Office Toolkit - robots.txt
 User-agent: *
 Allow: /
-Disallow: /admin
-Disallow: /api
 
+# Explicitly allow AI search bots
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+# Disallow admin and API admin routes
+Disallow: /admin/
+Disallow: /api/admin/
+
+# Sitemap
 Sitemap: https://office-toolkit.vercel.app/sitemap.xml

@@ -22,7 +22,7 @@ function esc(value) {
 function buildHead(route) {
   const url = `${SITE_URL}${route.path}`;
   const image = /^https?:\/\//i.test(route.image) ? route.image : `${SITE_URL}${route.image}`;
-  const title = `${route.title} — Office Toolkit`;
+  const title = route.title;
   const lines = [
     "<title>" + esc(title) + "</title>",
     '<meta name="description" content="' + esc(route.description) + '" />',

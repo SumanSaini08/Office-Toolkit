@@ -1,6 +1,6 @@
 import { type CSSProperties, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowRight, Check, ChevronRight, FileText, Hand, Lock, PenLine, ReceiptText } from 'lucide-react';
+import { ArrowRight, Calendar, Check, ChevronRight, FileText, Hand, Lock, MessageSquare, PenLine, ReceiptText } from 'lucide-react';
 import NotFound from '@/pages/not-found';
 import { toolUseCases, findToolUseCase, type ToolCategory, type ToolUseCase } from '@/lib/tools';
 import { applyPageMeta } from '@/lib/seo';
@@ -141,6 +141,17 @@ export function ToolPage() {
           <p className="mt-10 font-mono-ui text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--primary))]">{categoryLabel[tool.category]} use case</p>
           <h1 className="mt-4 max-w-3xl font-display text-4xl font-bold leading-[1] tracking-[-.055em] text-[hsl(var(--foreground))] md:text-5xl">{tool.title}</h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-[hsl(var(--muted-foreground))]">{tool.intro}</p>
+          <p className="mt-4 max-w-3xl text-base leading-7 text-[hsl(var(--foreground))]"><strong>What is {tool.title}?</strong> {tool.whatIs}</p>
+          <div className="mt-6 max-w-3xl space-y-3">
+            <h3 className="font-semibold text-[hsl(var(--foreground))]">Why use this tool?</h3>
+            <ul className="list-disc pl-5 space-y-1 text-base leading-7 text-[hsl(var(--muted-foreground))]">
+              {tool.whyUse.map((reason, i) => <li key={i}>{reason}</li>)}
+            </ul>
+          </div>
+          <div className="mt-6 max-w-3xl space-y-3">
+            <h3 className="font-semibold text-[hsl(var(--foreground))]">Free vs paid alternatives</h3>
+            <p className="text-base leading-7 text-[hsl(var(--muted-foreground))]">{tool.comparison}</p>
+          </div>
           {tool.body.map((paragraph) => (
             <p key={paragraph.slice(0, 24)} className="mt-4 max-w-3xl text-base leading-8 text-[hsl(var(--muted-foreground))]">{paragraph}</p>
           ))}
@@ -211,6 +222,26 @@ export function ToolPage() {
         <h2 className="font-display text-3xl font-bold tracking-[-.04em] text-[hsl(var(--foreground))]">Related Tools &amp; Formats</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Same tools, other everyday use cases — grouped by category.</p>
         <div className="mt-8 space-y-10">
+
+      <div className="mt-8 flex items-center gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><Calendar size={16} /></span>
+        <p className="text-sm font-medium text-[hsl(var(--foreground))]">Last updated: {tool.lastUpdated}</p>
+      </div>
+
+      {tool.faqAI && tool.faqAI.length > 0 && (
+        <Section>
+          <h2 className="font-display text-3xl font-bold tracking-[-.04em] text-[hsl(var(--foreground))]">Questions people ask AI assistants</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Direct, factual answers for common AI queries.</p>
+          <div className="mt-8 space-y-3">
+            {tool.faqAI.map((item) => (
+              <div key={item.q} className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
+                <h3 className="flex items-center gap-2 text-sm font-bold text-[hsl(var(--foreground))]"><span className="text-[hsl(var(--primary))]"><MessageSquare size={15} /></span> {item.q}</h3>
+                <p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{item.a}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
           <RelatedGroup title="E-signature" tools={esignatureTools} currentSlug={tool.slug} />
           <RelatedGroup title="Invoice &amp; formats" tools={invoiceTools} currentSlug={tool.slug} />
         </div>
@@ -231,7 +262,7 @@ export function ToolPage() {
 export function ToolsIndexPage() {
   useEffect(() => {
     applyPageMeta({
-      title: 'Free Online Office Tools – All-in-One Toolkit',
+      title: 'Free Online Office Tools - All in One Place',
       description: 'Browse every free Office Toolkit tool in one place — e-signatures for PDF, Word, Excel and contracts, plus invoice, GST, quotation and freelance billing tools. No signup.',
       canonical: '/tools',
       includeBrand: true,

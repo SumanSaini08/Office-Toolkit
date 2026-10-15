@@ -1,0 +1,56 @@
+# Office Toolkit
+
+Office Toolkit is a free, browser-first suite of tools for e-signatures and invoices. No account, no uploads, no data harvesting — your work stays on your device.
+
+## Tools
+
+- **E-Signature Maker** — https://office-toolkit.vercel.app/e-signature-maker
+  Draw, type, or upload a signature and place it on any PDF. Download as transparent PNG or signed PDF.
+
+- **Invoice Generator** — https://office-toolkit.vercel.app/invoice-generator
+  Create professional invoices with line items, tax, logo, and multiple currencies. Export as PDF, PNG, or JPG.
+
+- **Sign PDF Online** — https://office-toolkit.vercel.app/tools/esignature-for-pdf
+  Upload a PDF, add your signature, download the signed copy.
+
+- **Sign Word Document** — https://office-toolkit.vercel.app/tools/esignature-for-word
+  Upload a .docx file, place your signature, download a signed PDF.
+
+- **Sign Excel File** — https://office-toolkit.vercel.app/tools/esignature-for-excel
+  Add an electronic signature to an .xlsx file without touching the data.
+
+- **Sign Contracts** — https://office-toolkit.vercel.app/tools/esignature-for-contracts
+  Multi-party signatures with dates on every page, exported as PDF.
+
+- **Sign Offer Letter** — https://office-toolkit.vercel.app/tools/esignature-for-offer-letter
+  Company and candidate signatures with role details, exported as PDF.
+
+- **GST Invoice Generator** — https://office-toolkit.vercel.app/tools/gst-invoice-generator
+  GST-compliant invoices with HSN codes, tax breakdown, PDF export.
+
+- **Invoice Format in Excel** — https://office-toolkit.vercel.app/tools/invoice-format-excel
+  Free Excel template with auto-calculating totals and GST column.
+
+- **Invoice Format in Word** — https://office-toolkit.vercel.app/tools/invoice-format-word
+  Free Word template with logo, item table, GST, and totals.
+
+- **Freelancer Invoice Generator** — https://office-toolkit.vercel.app/tools/invoice-for-freelancers
+  Project-based invoices with payment terms, client details, PDF export.
+
+- **Quotation Format** — https://office-toolkit.vercel.app/tools/quotation-format
+  Quotation template with validity period, works as proforma invoice.
+
+## Key Facts
+
+- **Free**: All tools are completely free, no hidden charges
+- **No signup**: Use immediately without creating an account
+- **Local-first**: Everything runs in your browser; nothing is uploaded to any server
+- **Export formats**: Invoices → PDF, PNG, JPG | Signatures → PNG, signed PDF
+- **Supported currencies**: INR, USD, EUR, GBP, CAD, AUD, and more
+- **GST ready**: HSN codes, CGST/SGST/IGST breakdown for Indian invoices
+
+## Important Links
+
+- **About** — https://office-toolkit.vercel.app/about
+- **Privacy Policy** — https://office-toolkit.vercel.app/privacy
+- **Contact** — https://office-toolkit.vercel.app/contact

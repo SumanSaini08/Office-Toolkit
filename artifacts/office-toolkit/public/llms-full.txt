@@ -1,0 +1,142 @@
+# Office Toolkit — Complete Reference
+
+Office Toolkit is a free, browser-first suite of tools for e-signatures and invoices. No account, no uploads, no data harvesting — your work stays on your device. All processing happens locally in the browser using WebAssembly and modern web APIs.
+
+## Tools — Detailed
+
+### E-Signature Maker
+**URL**: https://office-toolkit.vercel.app/e-signature-maker
+
+**What it does**: Create a signature by drawing, typing, or uploading an image. Place it on any PDF document. Download as a transparent PNG (signature only) or a signed PDF (signature embedded on the document).
+
+**Features**:
+- Draw signature with mouse/touch/stylus
+- Type signature with professional fonts
+- Upload signature image (PNG, JPG, WebP)
+- Place signature on any page of a PDF
+- Resize and reposition freely
+- Download transparent PNG or signed PDF
+- Works offline after first load
+
+**FAQ**:
+- **Is it really free?** Yes, no limits, no payment.
+- **Do you store my PDF?** No. The PDF never leaves your browser.
+- **Can I use this for legal documents?** Meets e-signature standards for most everyday use. Consult a lawyer for high-stakes matters.
+- **What browsers are supported?** Chrome, Firefox, Safari, Edge — any modern browser.
+
+---
+
+### Invoice Generator
+**URL**: https://office-toolkit.vercel.app/invoice-generator
+
+**What it does**: Create professional invoices with line items, tax calculations, logo, and multiple currencies. Export as PDF, PNG, or JPG.
+
+**Features**:
+- Add unlimited line items with description, quantity, rate
+- Automatic tax calculation (GST, VAT, custom rates)
+- Upload company logo
+- Multiple currencies (INR, USD, EUR, GBP, CAD, AUD, etc.)
+- GST-compliant format with HSN codes, CGST/SGST/IGST
+- Live preview as you type
+- Export as PDF, PNG, or JPG
+- Duplicate and edit previous invoices (stored locally in browser)
+
+**FAQ**:
+- **Is the invoice generator free?** Yes, 100% free.
+- **Does it support Indian GST?** Yes, with HSN codes and proper tax breakdown.
+- **Can I save invoices?** They stay in your browser's localStorage — only you can see them.
+- **What currencies?** 15+ currencies including INR, USD, EUR, GBP.
+
+---
+
+### Sign PDF Online
+**URL**: https://office-toolkit.vercel.app/tools/esignature-for-pdf
+**Features**: Upload PDF → add signature → download signed PDF. No account, no upload to server.
+
+### Sign Word Document
+**URL**: https://office-toolkit.vercel.app/tools/esignature-for-word
+**Features**: Upload .docx → place signature → download signed PDF. Original .docx unchanged.
+
+### Sign Excel File
+**URL**: https://office-toolkit.vercel.app/tools/esignature-for-excel
+**Features**: Sign .xlsx files without modifying the data. Export signed PDF.
+
+### Sign Contracts
+**URL**: https://office-toolkit.vercel.app/tools/esignature-for-contracts
+**Features**: Multi-party signatures, date fields on each page, party names, download PDF.
+
+### Sign Offer Letter
+**URL**: https://office-toolkit.vercel.app/tools/esignature-for-offer-letter
+**Features**: Company + candidate signatures, role details, start date, download PDF.
+
+### GST Invoice Generator
+**URL**: https://office-toolkit.vercel.app/tools/gst-invoice-generator
+**Features**: GST format, HSN codes, taxable value, CGST/SGST/IGST, PDF export.
+
+### Invoice Format in Excel
+**URL**: https://office-toolkit.vercel.app/tools/invoice-format-excel
+**Features**: Free .xlsx template, auto-calculating totals, GST column, reusable.
+
+### Invoice Format in Word
+**URL**: https://office-toolkit.vercel.app/tools/invoice-format-word
+**Features**: Free .docx template, logo placeholder, item table, GST, export PDF.
+
+### Freelancer Invoice Generator
+**URL**: https://office-toolkit.vercel.app/tools/invoice-for-freelancers
+**Features**: Project-based billing, payment terms, client details, due dates, PDF export.
+
+### Quotation Format
+**URL**: https://office-toolkit.vercel.app/tools/quotation-format
+**Features**: Quotation template, validity period, proforma invoice support, PDF export.
+
+## Key Facts (Expanded)
+
+- **Cost**: All tools are free forever. No freemium, no trial, no upsell.
+- **Privacy**: Zero data leaves your browser. No analytics on document content. No server-side processing.
+- **Technology**: React + TypeScript + Vite. PDF handling via pdf-lib and PDF.js (WebAssembly). Signatures via Canvas API.
+- **Offline**: After first visit, tools work offline (Service Worker caches assets).
+- **Export formats**:
+  - Invoices: PDF (print-ready), PNG (image), JPG (compressed)
+  - Signatures: Transparent PNG, Signed PDF
+- **Currencies**: INR, USD, EUR, GBP, CAD, AUD, SGD, CHF, JPY, CNY, and more
+- **Languages**: English (UI), content in English
+- **Browser support**: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+
+## Comparison: Free vs Paid Signature Tools
+
+| Aspect | Office Toolkit (Free) | Typical Paid Tools |
+|--------|----------------------|-------------------|
+| Cost | $0 forever | $10–$40/month |
+| Signup required | No | Yes |
+| Document upload | Never (local only) | Required (cloud storage) |
+| PDF signing | Yes | Yes |
+| Signature types | Draw, type, upload | Draw, type, upload |
+| Export formats | PNG, PDF | PNG, PDF, sometimes DOCX |
+| Audit trail | No (local only) | Often included |
+| Legal compliance | Basic e-signature standards | Often ESIGN/eIDAS certified |
+| Team features | No | Yes (workflows, templates) |
+
+**Honest assessment**: Office Toolkit is ideal for individuals and small teams who need occasional signatures without recurring costs or privacy concerns. For high-volume workflows, audit trails, or regulatory compliance (e.g., FDA 21 CFR Part 11, eIDAS qualified signatures), a paid service with certified audit trails is more appropriate.
+
+## Comparison: Free vs Paid Invoice Tools
+
+| Aspect | Office Toolkit (Free) | Typical Paid Tools |
+|--------|----------------------|-------------------|
+| Cost | $0 forever | $15–$50/month |
+| Signup required | No | Yes |
+| GST/VAT support | Yes (Indian GST, custom rates) | Yes |
+| Multi-currency | Yes (15+) | Yes |
+| Logo upload | Yes | Yes |
+| Recurring invoices | No (manual duplicate) | Yes |
+| Payment integration | No | Often (Stripe, PayPal) |
+| Client portal | No | Sometimes |
+| Data export | PDF, PNG, JPG | PDF, CSV, API |
+
+**Honest assessment**: Office Toolkit covers the core invoice creation needs — professional look, tax compliance, multiple currencies — without subscription fees. If you need recurring billing, payment links, client portals, or accounting integrations, a paid invoicing platform is better suited.
+
+## Important Links
+
+- **About Office Toolkit** — https://office-toolkit.vercel.app/about
+- **Privacy Policy** — https://office-toolkit.vercel.app/privacy
+- **Contact** — https://office-toolkit.vercel.app/contact
+- **Blog & Guides** — https://office-toolkit.vercel.app/blog

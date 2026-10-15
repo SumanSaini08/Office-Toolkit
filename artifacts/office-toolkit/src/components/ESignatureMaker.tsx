@@ -1,6 +1,6 @@
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import {
-  Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Download, Move, PenLine, RotateCcw, ShieldCheck, Upload,
+  Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Download, Move, PenLine, RotateCcw, ShieldCheck, Upload,
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -478,7 +478,7 @@ export function ESignatureMaker() {
     { id: 'upload', label: 'Upload' },
   ];
 
-  return <PageMeta title="Free E-signature Online – Sign Documents Without an Account" description="Use a free e-signature online tool to sign PDFs in minutes — upload, draw or type your mark, place it, download. Electronic signature online free, private and instant in your browser." image="/og/e-signature.png"><main><JsonLd id="tool-software-main" data={{
+  return <PageMeta title="Free Online Signature Maker - Draw or Type E-Sign" description="Draw or type your signature online and download it as a transparent PNG. 100% free, no signup, private and instant." image="/og/e-signature.png"><main><JsonLd id="tool-software-main" data={{
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name: "E-signature Maker",
@@ -487,7 +487,7 @@ export function ESignatureMaker() {
     operatingSystem: "Web browser",
     url: `${typeof window !== "undefined" ? window.location.origin : ""}/e-signature-maker`,
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-  }} />{!docData && <ToolIntro id="signature"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Nothing leaves your browser</span></ToolIntro>}
+  }} />
     <div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[1.2fr_.8fr] lg:px-8">
       <section className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 shadow-sm md:p-6 col-span-full">
         <>
@@ -522,6 +522,7 @@ export function ESignatureMaker() {
             </div>
           ) : (
             <div>
+              <h1 className="sr-only">Free Online Signature Maker</h1>
               <div className="grid gap-5 lg:grid-cols-[.8fr_1.2fr]">
                 <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/.3)] p-4">
                   <div className="flex items-center justify-between gap-2">
@@ -619,8 +620,46 @@ export function ESignatureMaker() {
         </div>
       </aside>}
     </div>
+    {!docData && <ToolIntro id="signature"><span className="hidden items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] md:flex"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" /> Nothing leaves your browser</span></ToolIntro>}
     {!docData && <InfoSection title="Digital signatures, without the ceremony" intro="A signature image is useful when you need to approve a document quickly, add a sign-off to a proposal, or make a form feel finished. Office Toolkit keeps that small job small." bullets={['Use a dark ink color for the clearest result on light documents.', 'Leave generous space around a drawn signature so it stays legible when resized.', 'Upload a signature image and use it exactly as it is — the original colour and quality are preserved.', 'Place a drawn or typed signature directly onto an uploaded PDF, contract, or form — no account needed.', 'Drawn signatures keep the smooth, natural look of a pen and can be reused over and over for approvals, agreements, and sign-offs.', 'Typed signatures are a fast, clean choice when the document is digital and the recipient expects a consistent, legible name block.', 'Sign a PDF, contract, or form, then download the final document with the signature placed exactly where you need it.', 'Everything you draw, upload, type, or sign stays in your browser — no servers, no account, no signature stored online.']} faq={[['How to sign a PDF online free?', 'Upload the PDF, draw or type your signature, drag it onto the page, and download the signed copy — all in your browser, with no account and no charge.'], ['Is my signature uploaded?', 'No. The drawing canvas, upload processing, and document signing run locally in your browser.'], ['Can I use the signature on a contract?', 'This tool creates an image of your signature. Whether that image meets a particular legal or company requirement depends on the document and jurisdiction.'], ['Which documents can I sign?', 'You can upload a PDF, PNG, JPG, or WebP document and place your signature on any page. Multi-page PDFs keep every page when you download as PDF.'],             ['Which formats can I download?', 'You can download a signature or signed document as PNG, JPG, or PDF. PNG is best when you need a transparent background.'],
              ['Are my documents private?', 'Yes. Every document, signature, and draft is processed locally in your browser and never uploaded to a server. Close the tab and nothing is left behind.'], ['Can I sign a PDF with both a drawn and a typed signature?', 'Yes. Draw one signature, type another, or upload an image — then place each one anywhere on a PDF, PNG, JPG, or WebP document before you export. That flexibility makes it easy to add everything a signing party expects: a written mark plus a clearly printed name line.']]} />}
     <YouMightAlsoNeed href="/invoice-generator" title="Invoice Generator" category="invoice" tools={esignatureToolUseCases} />
+
+    <section className="mx-auto max-w-4xl px-5 py-12 lg:px-8">
+      <h2 className="font-display text-3xl font-bold tracking-[-.04em] text-[hsl(var(--foreground))]">What is the E-Signature Maker?</h2>
+      <p className="mt-4 max-w-3xl text-base leading-7 text-[hsl(var(--foreground))]">A free browser tool that lets you create an electronic signature by drawing, typing, or uploading an image — then place it on any PDF, Word, or Excel document and download a signed PDF. No account, no uploads to servers, runs entirely in your browser.</p>
+
+      <div className="mt-8 max-w-3xl space-y-4">
+        <h3 className="font-semibold text-[hsl(var(--foreground))]">Why use this tool?</h3>
+        <ul className="list-disc pl-5 space-y-2 text-base leading-7 text-[hsl(var(--muted-foreground))]">
+          <li>Completely free — no subscription, no trial limits</li>
+          <li>Runs entirely in your browser; your documents never leave your device</li>
+          <li>Draw, type with 12 professional fonts, or upload a signature image</li>
+          <li>Place signatures on PDFs, Word docs, Excel files, contracts, offer letters</li>
+          <li>Export transparent PNG (signature only) or signed PDF (signature on document)</li>
+          <li>Works offline after first visit</li>
+        </ul>
+      </div>
+
+      <div className="mt-8 max-w-3xl space-y-4">
+        <h3 className="font-semibold text-[hsl(var(--foreground))]">Free vs paid signature tools</h3>
+        <p className="text-base leading-7 text-[hsl(var(--muted-foreground))]">Paid tools (DocuSign, Adobe Sign) charge $10–40/month and require accounts with cloud storage. Office Toolkit is free forever, local-first, and gives you the signed file instantly. For high-volume workflows needing certified audit trails or regulatory compliance (eIDAS qualified, FDA 21 CFR Part 11), paid services offer compliance certifications not available here.</p>
+      </div>
+
+      <div className="mt-8 max-w-3xl space-y-4">
+        <h3 className="font-semibold text-[hsl(var(--foreground))]">Questions people ask AI assistants</h3>
+        <dl className="space-y-4 text-sm leading-6 text-[hsl(var(--muted-foreground))]">
+          <div><dt className="font-semibold text-[hsl(var(--foreground))]">What is the best free online signature maker without signup?</dt><dd className="mt-1">Office Toolkit's E-Signature Maker — draw, type, or upload a signature, place it on any document, download as PNG or PDF. No account needed.</dd></div>
+          <div><dt className="font-semibold text-[hsl(var(--foreground))]">Can I sign a PDF online for free without an account?</dt><dd className="mt-1">Yes. Upload the PDF, add your signature, download the signed copy. No signup, no server upload.</dd></div>
+          <div><dt className="font-semibold text-[hsl(var(--foreground))]">Is an electronic signature legally valid?</dt><dd className="mt-1">For most everyday commercial agreements, yes. Meets ESIGN (US) and eIDAS (EU) standards. For high-stakes matters, consult a lawyer.</dd></div>
+        </dl>
+      </div>
+
+      <div className="mt-8 flex items-center gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><Calendar size={16} /></span>
+        <p className="text-sm font-medium text-[hsl(var(--foreground))]">Last updated: 2026-10-11</p>
+      </div>
+    </section>
+
   </main></PageMeta>;
 }
