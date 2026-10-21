@@ -7,7 +7,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 const distDir = resolve(root, "dist/public");
 
-function generateSitemap() {
+export function generateSitemap() {
   const routes = buildRoutes();
   const publicRoutes = routes.filter(r =>
     !r.path.startsWith("/admin") && r.path !== "/404"
@@ -40,4 +40,6 @@ ${urls}
   console.log(`Generated sitemap.xml with ${publicRoutes.length} URLs`);
 }
 
-generateSitemap();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  generateSitemap();
+}
