@@ -19,6 +19,41 @@ import {
 } from 'lucide-react';
 
 function HomeSignPDFUploader() {
+  const [, setLocation] = useLocation();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        sessionStorage.setItem('esign_home_file', String(reader.result));
+        sessionStorage.setItem('esign_home_filename', file.name);
+        sessionStorage.setItem('esign_home_filetype', file.type);
+      } catch {}
+      setLocation('/e-signature-maker');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        sessionStorage.setItem('esign_home_file', String(reader.result));
+        sessionStorage.setItem('esign_home_filename', file.name);
+        sessionStorage.setItem('esign_home_filetype', file.type);
+      } catch {}
+      setLocation('/e-signature-maker');
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <section className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
       <div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 shadow-sm md:p-6">
@@ -27,11 +62,20 @@ function HomeSignPDFUploader() {
           <h2 className="mt-4 font-display text-3xl font-bold tracking-[-.04em] md:text-4xl">Sign a PDF online</h2>
           <p className="mt-3 max-w-md text-sm leading-6 text-[hsl(var(--muted-foreground))]">Upload your document, create your signature, drag it anywhere on the page, and download. Free and private.</p>
           <div className="mt-7 w-full max-w-md rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
-            <a href="/e-signature-maker" className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[hsl(var(--primary)/.4)] bg-[hsl(var(--secondary)/.25)] px-6 py-10 text-center transition-colors hover:bg-[hsl(var(--secondary)/.4)]">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[hsl(var(--primary)/.4)] bg-[hsl(var(--secondary)/.25)] px-6 py-10 text-center transition-colors hover:bg-[hsl(var(--secondary)/.4)]"
+            >
               <Upload size={30} className="text-[hsl(var(--primary))]" />
               <span className="text-sm font-bold">Drop a file here or <span className="text-[hsl(var(--primary))] underline decoration-2 underline-offset-4">choose a document</span></span>
               <span className="text-xs text-[hsl(var(--muted-foreground))]">PDF, PNG, JPG, or WebP</span>
-            </a>
+              <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="sr-only" onChange={handleFileChange} />
+            </div>
             <div className="mt-4 flex items-center gap-2">
               <span className="h-px flex-1 bg-[hsl(var(--border))]" />
               <span className="text-[10px] font-bold uppercase tracking-[.14em] text-[hsl(var(--muted-foreground))]">or paste a link</span>

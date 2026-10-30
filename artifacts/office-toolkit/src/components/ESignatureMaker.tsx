@@ -223,9 +223,10 @@ function recolorDataUrl(dataUrl: string, target: string) {
 }
 
 export function ESignatureMaker() {
+  const [, setLocation] = useLocation();
   const [color, setColor] = useState('#174f4a');
   const [name, setName] = useState('Alex Morgan');
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('png');
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('pdf');
   const [proFont, setProFont] = useState<string>(professionalSignatureFonts[0][1]);
   const [sigTab, setSigTab] = useState<'draw' | 'type' | 'upload'>('draw');
   const composerDrawRef = useRef<HTMLCanvasElement>(null);
@@ -254,6 +255,38 @@ export function ESignatureMaker() {
   const positioning = useRef(false);
   const cornerResizing = useRef(false);
   const cornerStart = useRef({ x: 0, y: 0, scaleX: 0, scaleY: 0 });
+
+  useEffect(() => {
+    try {
+      const dataUrl = sessionStorage.getItem('esign_home_file');
+      const fname = sessionStorage.getItem('esign_home_filename') || '';
+      const ftype = sessionStorage.getItem('esign_home_filetype') || '';
+      if (dataUrl) {
+        sessionStorage.removeItem('esign_home_file');
+        sessionStorage.removeItem('esign_home_filename');
+        sessionStorage.removeItem('esign_home_filetype');
+        setDocError('');
+        setDocName(fname.replace(/\.[^.]+$/, '') || 'signed-document');
+        setDocIsPdf(false);
+        setDocPages([]);
+        setDocPageIndex(0);
+        setDocPageCount(1);
+        pdfPagesRef.current = [];
+        const isPdf = ftype === 'application/pdf' || /\.pdf$/i.test(fname);
+        if (isPdf) {
+          fetch(dataUrl)
+            .then((r) => r.blob())
+            .then((blob) => {
+              const file = new File([blob], fname || 'document.pdf', { type: ftype || 'application/pdf' });
+              loadPdf(file);
+            })
+            .catch(() => setDocError('Could not load the document.'));
+        } else {
+          setDocData(dataUrl);
+        }
+      }
+    } catch {}
+  }, []);
 
   const startCornerResize = (e: PointerEvent<HTMLDivElement>) => {
     e.stopPropagation();
