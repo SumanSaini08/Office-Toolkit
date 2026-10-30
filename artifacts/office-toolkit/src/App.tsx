@@ -19,116 +19,77 @@ import {
 } from 'lucide-react';
 
 function HomeSignPDFUploader() {
+  const [, setLocation] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [fileData, setFileData] = useState<string>('');
-  const [fileName, setFileName] = useState<string>('');
-  const [fileType, setFileType] = useState<string>('');
-  const [signatures, setSignatures] = useState<string[]>([]);
-  const [activeSig, setActiveSig] = useState<string>('');
-  const [placed, setPlaced] = useState<Array<{id:number,x:number,y:number}>>([]);
-  const [dragging, setDragging] = useState<number|null>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
 
-  const handleFile = (file?: File) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
-    setFileName(file.name);
-    setFileType(file.type);
-    setPlaced([]);
     const reader = new FileReader();
-    reader.onload = () => setFileData(String(reader.result));
+    reader.onload = () => {
+      try {
+        sessionStorage.setItem('esign_home_file', String(reader.result));
+        sessionStorage.setItem('esign_home_filename', file.name);
+        sessionStorage.setItem('esign_home_filetype', file.type);
+      } catch {}
+      setLocation('/e-signature-maker');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        sessionStorage.setItem('esign_home_file', String(reader.result));
+        sessionStorage.setItem('esign_home_filename', file.name);
+        sessionStorage.setItem('esign_home_filetype', file.type);
+      } catch {}
+      setLocation('/e-signature-maker');
+    };
     reader.readAsDataURL(file);
   };
-
-  const addSig = () => {
-    const name = prompt('Enter name for signature');
-    if (!name) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = 600; canvas.height = 200;
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#111';
-    ctx.font = 'bold 80px cursive';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(name, 300, 100);
-    const data = canvas.toDataURL('image/png');
-    setSignatures(s => [...s, data]);
-    setActiveSig(data);
-  };
-
-  const place = (e: React.MouseEvent) => {
-    if (!activeSig || !wrapRef.current) return;
-    const rect = wrapRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setPlaced(p => [...p, {id: Date.now(), x, y}]);
-  };
-
-  const startDrag = (e: React.MouseEvent, id: number) => {
-    e.stopPropagation();
-    setDragging(id);
-  };
-
-  const move = (e: React.MouseEvent) => {
-    if (dragging === null || !wrapRef.current) return;
-    const rect = wrapRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setPlaced(p => p.map(it => it.id === dragging ? {...it, x: Math.max(0, Math.min(100,x)), y: Math.max(0, Math.min(100,y))} : it));
-  };
-
-  const end = () => setDragging(null);
 
   return (
     <section className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
       <div className="rounded-[1.35rem] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 shadow-sm md:p-6">
-        {!fileData ? (
-          <div className="flex flex-col items-center justify-center rounded-[1.35rem] border-2 border-dashed border-[hsl(var(--primary)/.35)] bg-[hsl(var(--background))] px-6 py-14 text-center">
-            <div className="flex items-center gap-2 text-xs font-bold text-[hsl(var(--primary))]"><ShieldCheck size={14} /> Works entirely in your browser</div>
-            <h2 className="mt-4 font-display text-3xl font-bold tracking-[-.04em] md:text-4xl">Sign a PDF online</h2>
-            <p className="mt-3 max-w-md text-sm leading-6 text-[hsl(var(--muted-foreground))]">Upload your document, create your signature, drag it anywhere on the page, and download. Free and private.</p>
-            <div className="mt-7 w-full max-w-md rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => fileInputRef.current?.click()}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => { e.preventDefault(); handleFile(e.dataTransfer.files?.[0]); }}
-                className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[hsl(var(--primary)/.4)] bg-[hsl(var(--secondary)/.25)] px-6 py-10 text-center transition-colors hover:bg-[hsl(var(--secondary)/.4)]"
-              >
-                <Upload size={30} className="text-[hsl(var(--primary))]" />
-                <span className="text-sm font-bold">Drop a file here or <span className="text-[hsl(var(--primary))] underline decoration-2 underline-offset-4">choose a document</span></span>
-                <span className="text-xs text-[hsl(var(--muted-foreground))]">PDF, PNG, JPG, or WebP</span>
-                <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="sr-only" onChange={(e) => handleFile(e.target.files?.[0])} />
-              </div>
+        <div className="flex flex-col items-center justify-center rounded-[1.35rem] border-2 border-dashed border-[hsl(var(--primary)/.35)] bg-[hsl(var(--background))] px-6 py-14 text-center">
+          <div className="flex items-center gap-2 text-xs font-bold text-[hsl(var(--primary))]"><ShieldCheck size={14} /> Works entirely in your browser</div>
+          <h2 className="mt-4 font-display text-3xl font-bold tracking-[-.04em] md:text-4xl">Sign a PDF online</h2>
+          <p className="mt-3 max-w-md text-sm leading-6 text-[hsl(var(--muted-foreground))]">Upload your document, create your signature, drag it anywhere on the page, and download. Free and private.</p>
+          <div className="mt-7 w-full max-w-md rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[hsl(var(--primary)/.4)] bg-[hsl(var(--secondary)/.25)] px-6 py-10 text-center transition-colors hover:bg-[hsl(var(--secondary)/.4)]"
+            >
+              <Upload size={30} className="text-[hsl(var(--primary))]" />
+              <span className="text-sm font-bold">Drop a file here or <span className="text-[hsl(var(--primary))] underline decoration-2 underline-offset-4">choose a document</span></span>
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">PDF, PNG, JPG, or WebP</span>
+              <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="sr-only" onChange={handleFileChange} />
             </div>
+            <div className="mt-4 flex items-center gap-2">
+              <span className="h-px flex-1 bg-[hsl(var(--border))]" />
+              <span className="text-[10px] font-bold uppercase tracking-[.14em] text-[hsl(var(--muted-foreground))]">or paste a link</span>
+              <span className="h-px flex-1 bg-[hsl(var(--border))]" />
+            </div>
+            <a href="/e-signature-maker" className="mt-4 flex w-full items-center gap-2">
+              <span className="h-10 w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm text-[hsl(var(--muted-foreground))] placeholder:text-[hsl(var(--muted-foreground)/.65)]" style={{userSelect: 'none'}}>https://your-document-link…</span>
+              <span className="btn-press h-11 shrink-0 rounded-xl bg-[hsl(var(--secondary))] px-4 text-sm font-bold">Open in tool</span>
+            </a>
           </div>
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
-            <div className="rounded-xl border border-[hsl(var(--border))] p-4">
-              <p className="text-sm font-bold mb-2">Signatures</p>
-              <button onClick={addSig} className="w-full mb-2 px-3 py-2 rounded-lg bg-[hsl(var(--secondary))] text-sm font-bold">+ Add signature</button>
-              {signatures.map((s,i) => (
-                <button key={i} onClick={() => setActiveSig(s)} className={`w-full mb-1 p-2 rounded-lg border ${activeSig===s?'border-[hsl(var(--primary))]':'border-[hsl(var(--border))]'}`}><img src={s} className="max-h-10 mx-auto" alt="sig"/></button>
-              ))}
-              <button onClick={() => {setFileData(''); setPlaced([]); setSignatures([]); setActiveSig('');}} className="w-full mt-3 px-3 py-2 rounded-lg border border-[hsl(var(--border))] text-sm">Change file</button>
-            </div>
-            <div className="rounded-xl border border-[hsl(var(--border))] p-4">
-              <p className="text-sm font-bold mb-2">{fileName}</p>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mb-2">Click on document to place signature. Drag to move.</p>
-              <div ref={wrapRef} className="relative overflow-auto" onClick={place} onMouseMove={move} onMouseUp={end} onMouseLeave={end}>
-                {fileType.includes('pdf') || /\.pdf$/i.test(fileName) ? (
-                  <div className="w-full h-[600px] bg-white border flex items-center justify-center text-sm text-[hsl(var(--muted-foreground))]">PDF uploaded - place signatures</div>
-                ) : (
-                  <img src={fileData} alt="doc" className="max-w-full h-auto" />
-                )}
-                {placed.map(p => (
-                  <img key={p.id} src={activeSig || signatures[0]} alt="placed" className="absolute cursor-move" style={{left:`${p.x}%`, top:`${p.y}%`, transform:'translate(-50%,-50%)', maxHeight:'60px'}} onMouseDown={(e) => startDrag(e,p.id)} />
-                ))}
-              </div>
-            </div>
+          <div className="mt-6 grid w-full max-w-md gap-3 sm:grid-cols-3">
+            {[['1 · Upload', 'Your contract, form, or letter'], ['2 · Create signature', 'Draw, type, or upload it'], ['3 · Download', 'Signed and ready to send']].map(([n, d]) => <div key={n} className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-left"><p className="font-display text-sm font-bold">{n}</p><p className="mt-1 text-xs leading-5 text-[hsl(var(--muted-foreground))]">{d}</p></div>)}
           </div>
-        )}
+        </div>
       </div>
     </section>
   );
