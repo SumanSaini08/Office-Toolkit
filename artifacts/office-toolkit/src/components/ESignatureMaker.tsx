@@ -256,6 +256,9 @@ export function ESignatureMaker() {
   const positioning = useRef(false);
   const cornerResizing = useRef(false);
   const cornerStart = useRef({ x: 0, y: 0, scaleX: 0, scaleY: 0 });
+  const signDragging = useRef(false);
+  const signDragStart = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
+  const signMoved = useRef(false);
 
   useEffect(() => {
     try {
@@ -304,7 +307,39 @@ export function ESignatureMaker() {
     setSignScaleY(Math.max(0.2, Math.min(3.5, cornerStart.current.scaleY + dy / 60)));
   };
 
-  const stopCornerResize = () => { cornerResizing.current = false; };
+  const startSignDrag = (e: React.PointerEvent) => {
+    if (!signatureData || !docWrapRef.current) return;
+    e.stopPropagation();
+    signDragging.current = true;
+    signMoved.current = false;
+    signDragStart.current = { x: e.clientX, y: e.clientY, posX: signPos.x, posY: signPos.y };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const onSignDragMove = (e: React.PointerEvent) => {
+    if (!signDragging.current || !docWrapRef.current) return;
+    const rect = docWrapRef.current.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const dx = e.clientX - signDragStart.current.x;
+    const dy = e.clientY - signDragStart.current.y;
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) signMoved.current = true;
+    const nx = signDragStart.current.posX + (dx / rect.width) * 100;
+    const ny = signDragStart.current.posY + (dy / rect.height) * 100;
+    setSignPos({ x: Math.max(0, Math.min(100, nx)), y: Math.max(0, Math.min(100, ny)) });
+  };
+
+  const stopSignDrag = () => {
+    signDragging.current = false;
+  };
+
+  const placeSignOnClick = (e: React.PointerEvent) => {
+    if (!signatureData || !docWrapRef.current) return;
+    if (signMoved.current) { signMoved.current = false; return; }
+    const rect = docWrapRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setSignPos({ x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) });
+  };
 
   const applyComposerDraw = () => {
     const source = composerDrawRef.current;
@@ -596,7 +631,7 @@ export function ESignatureMaker() {
                     <div
                       ref={docWrapRef}
                       className="relative mx-auto w-full max-w-[560px] select-none"
-                      onPointerDown={(e) => { positioning.current = true; (e.currentTarget).setPointerCapture(e.pointerId); }}
+                      onPointerDown={placeSignOnClick}
                       onPointerMove={signDocPosition}
                       onPointerUp={() => { positioning.current = false; }}
                       onPointerLeave={() => { positioning.current = false; }}
@@ -608,12 +643,22 @@ export function ESignatureMaker() {
                           title="Drag to move"
                           data-testid="handle-doc-move"
                         ><Move size={12} /></div>
-                        <img src={signatureData} alt="Your signature placed on the document" className="w-full drop-shadow-sm" data-testid="img-doc-sign-placed" />
+                        <img
+                          src={signatureData}
+                          alt="Your signature placed on the document"
+                          className="w-full drop-shadow-sm cursor-grab active:cursor-grabbing"
+                          data-testid="img-doc-sign-placed"
+                          style={{ touchAction: 'none' }}
+                          onPointerDown={startSignDrag}
+                          onPointerMove={onSignDragMove}
+                          onPointerUp={stopSignDrag}
+                          onPointerCancel={stopSignDrag}
+                        />
                         <div
-                          onPointerDown={(e) => startCornerResize(e)}
-                          onPointerMove={(e) => cornerResizeMove(e)}
-                          onPointerUp={stopCornerResize}
-                          onPointerLeave={stopCornerResize}
+                          onPointerDown={(e) => { e.stopPropagation(); startCornerResize(e); }}
+                          onPointerMove={(e) => { e.stopPropagation(); cornerResizeMove(e); }}
+                          onPointerUp={(e) => { e.stopPropagation(); stopCornerResize(); }}
+                          onPointerLeave={(e) => { e.stopPropagation(); stopCornerResize(); }}
                           className="absolute -right-2 -bottom-2 size-5 cursor-nwse-resize rounded-full border-2 border-white bg-[hsl(var(--primary))] shadow"
                           title="Drag corner to resize"
                           data-testid="handle-doc-resize"
