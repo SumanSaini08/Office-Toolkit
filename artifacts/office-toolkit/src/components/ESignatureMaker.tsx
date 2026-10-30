@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { useLocation } from 'wouter';
 import { professionalSignatureFonts } from '@/lib/content';
 import { applyPageMeta } from '@/lib/seo';
 import { YouMightAlsoNeed, esignatureToolUseCases } from '@/components/RelatedTools';
