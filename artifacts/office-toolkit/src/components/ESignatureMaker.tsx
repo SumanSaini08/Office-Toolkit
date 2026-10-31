@@ -295,45 +295,58 @@ export function ESignatureMaker() {
   }, []);
 
   const startCornerResize = (e: PointerEvent<HTMLDivElement>) => {
+    if (!signatureData) return;
     e.stopPropagation();
+    e.preventDefault();
     cornerResizing.current = true;
-    cornerStart.current = { x: e.clientX, y: e.clientY, scaleX: signScaleX, scaleY: signScaleY };
+    cornerStart.current = { x: e.clientX, y: e.clientY, scaleX: (sign?.widthPct ?? 20), scaleY: (sign?.widthPct ?? 20) };
     (e.currentTarget).setPointerCapture(e.pointerId);
   };
 
   const cornerResizeMove = (e: PointerEvent<HTMLDivElement>) => {
-    if (!cornerResizing.current) return;
+    if (!cornerResizing.current || !docWrapRef.current) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const rect = docWrapRef.current.getBoundingClientRect();
+    if (rect.width === 0) return;
     const dx = e.clientX - cornerStart.current.x;
-    const dy = e.clientY - cornerStart.current.y;
-    setSignScaleX(Math.max(0.2, Math.min(3.5, cornerStart.current.scaleX + dx / 60)));
-    setSignScaleY(Math.max(0.2, Math.min(3.5, cornerStart.current.scaleY + dy / 60)));
+    const deltaPct = (dx / rect.width) * 100;
+    let w = Math.max(5, Math.min(80, cornerStart.current.scaleX + deltaPct));
+    w = Math.round(w * 10) / 10;
+    const ns = { pageIndex: docPageIndex, xPct: sign?.xPct ?? signPos.x, yPct: sign?.yPct ?? signPos.y, widthPct: w };
+    setSign(ns);
+    setSignPos({ x: ns.xPct, y: ns.yPct });
+    setSignScaleX(w / 20);
+    setSignScaleY(w / 20);
   };
 
   const startSignDrag = (e: React.PointerEvent) => {
     if (!signatureData || !docWrapRef.current) return;
     e.stopPropagation();
+    e.preventDefault();
     signDragging.current = true;
     signMoved.current = false;
     const sx = sign?.xPct ?? signPos.x;
     const sy = sign?.yPct ?? signPos.y;
     signDragStart.current = { x: e.clientX, y: e.clientY, posX: sx, posY: sy };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch {}
   };
 
   const onSignDragMove = (e: React.PointerEvent) => {
     if (!signDragging.current || !docWrapRef.current) return;
+    e.stopPropagation();
+    e.preventDefault();
     const rect = docWrapRef.current.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
     const dx = e.clientX - signDragStart.current.x;
     const dy = e.clientY - signDragStart.current.y;
-    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) signMoved.current = true;
-    const sw = (sign?.widthPct ?? (signScaleX * 20));
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) signMoved.current = true;
+    const sw = (sign?.widthPct ?? 20);
     const nx = signDragStart.current.posX + (dx / rect.width) * 100;
     const ny = signDragStart.current.posY + (dy / rect.height) * 100;
     const clampedX = Math.max(sw / 2, Math.min(100 - sw / 2, nx));
     const clampedY = Math.max(sw / 4, Math.min(100 - sw / 4, ny));
-    const newPos = { x: clampedX, y: clampedY };
-    setSignPos(newPos);
+    setSignPos({ x: clampedX, y: clampedY });
     setSign({ pageIndex: docPageIndex, xPct: clampedX, yPct: clampedY, widthPct: sw });
   };
 
@@ -357,7 +370,9 @@ export function ESignatureMaker() {
 
   const applyComposerDraw = () => {
     const source = composerDrawRef.current;
-    if (source) setSignatureData(cropCanvasInk(source).toDataURL('image/png'));
+    if (source)                     setSignatureData(cropCanvasInk(source).toDataURL('image/png'));
+                    setSign(null);
+                    setSigSelected(false);
   };
 
   const applyComposerType = () => {
@@ -370,23 +385,25 @@ export function ESignatureMaker() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(name || 'Your name', 600, 215);
-    setSignatureData(cropCanvasInk(canvas).toDataURL('image/png'));
+                    setSignatureData(cropCanvasInk(canvas).toDataURL('image/png'));
+                    setSign(null);
+                    setSigSelected(false);
   };
 
   const applyComposerUpload = () => {
-    if (composerUpload) setSignatureData(composerUpload);
+                  if (composerUpload) { setSignatureData(composerUpload); setSign(null); setSigSelected(false); }
   };
 
-  useEffect(() => {
-    if (!signatureData) { setSign(null); setSigSelected(false); return; }
-    if (!sign) {
-      const defaultSign = { pageIndex: docPageIndex, xPct: 75, yPct: 75, widthPct: 22 };
-      setSign(defaultSign);
-      setSignPos({ x: defaultSign.xPct, y: defaultSign.yPct });
-      setSignScaleX(defaultSign.widthPct / 20);
-      setSignScaleY(defaultSign.widthPct / 20);
-      setSigSelected(true);
-    }
+      if (signatureData) {
+        const next = { pageIndex: docPageIndex, xPct: 75, yPct: 75, widthPct: 22 };
+        setSign(next);
+        setSignPos({ x: next.xPct, y: next.yPct });
+        setSignScaleX(next.widthPct / 20);
+        setSignScaleY(next.widthPct / 20);
+        setSigSelected(true);
+      } else { setSign(null); setSigSelected(false); }
+    };
+    ensure();
   }, [signatureData]);
 
   const pickComposerUpload = (file?: File) => {
@@ -650,19 +667,23 @@ export function ESignatureMaker() {
                     <div
                       ref={docWrapRef}
                       className="relative mx-auto w-full max-w-[560px] select-none"
-                      onPointerDown={(e) => { placeSignOnClick(e); if (!signatureData) { positioning.current = true; (e.currentTarget).setPointerCapture(e.pointerId); } }}
+                      style={{ touchAction: 'pan-y pinch-zoom' }}
+                      onPointerDown={(e) => {
+                        if (!signatureData) { positioning.current = true; try { (e.currentTarget).setPointerCapture(e.pointerId); } catch {} return; }
+                        placeSignOnClick(e);
+                        setSigSelected(false);
+                      }}
                       onPointerMove={signDocPosition}
                       onPointerUp={() => { positioning.current = false; }}
                       onPointerLeave={() => { positioning.current = false; }}
-                      onClick={(e) => { e.stopPropagation(); setSigSelected(false); }}
                     >
                       <img src={docData} alt="Your uploaded document being signed" className="w-full rounded-md" data-testid="img-document" />
                       {signatureData && <div
                         className="absolute"
                         style={{ left: `${sign?.xPct ?? signPos.x}%`, top: `${sign?.yPct ?? signPos.y}%`, width: `${(sign?.widthPct ?? 20)}%`, maxWidth: '80%', transform: 'translate(-50%, -50%)', touchAction: 'none' }}
                         data-testid="sign-overlay"
-                        onPointerDown={(e) => { e.stopPropagation(); setSigSelected(true); startSignDrag(e); }}
-                        onPointerMove={onSignDragMove}
+                        onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); setSigSelected(true); startSignDrag(e); }}
+                        onPointerMove={(e) => { if (signDragging.current) { onSignDragMove(e); } }}
                         onPointerUp={(e) => { e.stopPropagation(); stopSignDrag(); }}
                         onPointerCancel={(e) => { e.stopPropagation(); stopSignDrag(); }}
                       >
@@ -671,26 +692,28 @@ export function ESignatureMaker() {
                           alt="Your signature placed on the document"
                           className={`w-full drop-shadow-sm ${sigSelected ? 'outline outline-2 outline-[hsl(var(--primary))] outline-offset-1' : ''}`}
                           data-testid="img-doc-sign-placed"
-                          style={{ touchAction: 'none', cursor: signDragging.current ? 'grabbing' : 'grab', pointerEvents: 'auto' }}
+                          style={{ touchAction: 'none', cursor: signDragging.current ? 'grabbing' : 'grab', pointerEvents: 'auto', userSelect: 'none' }}
                           draggable={false}
                         />
                         {sigSelected && <>
                           <div
-                            onPointerDown={(e) => { e.stopPropagation(); startCornerResize(e); }}
-                            onPointerMove={(e) => { e.stopPropagation(); cornerResizeMove(e); }}
-                            onPointerUp={(e) => { e.stopPropagation(); stopCornerResize(); }}
-                            onPointerLeave={(e) => { e.stopPropagation(); stopCornerResize(); }}
+                            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); startCornerResize(e); }}
+                            onPointerMove={(e) => { if (cornerResizing.current) { e.stopPropagation(); e.preventDefault(); cornerResizeMove(e); } }}
+                            onPointerUp={(e) => { e.stopPropagation(); e.preventDefault(); stopCornerResize(); }}
+                            onPointerCancel={(e) => { e.stopPropagation(); e.preventDefault(); stopCornerResize(); }}
                             className="absolute -right-1 -bottom-1 size-4 cursor-nwse-resize rounded-full border-2 border-white bg-[hsl(var(--primary))] shadow"
                             title="Drag corner to resize"
                             data-testid="handle-doc-resize"
+                            style={{ touchAction: 'none' }}
                           />
                           <div
-                            onPointerDown={(e) => { e.stopPropagation(); startCornerResize(e); }}
-                            onPointerMove={(e) => { e.stopPropagation(); cornerResizeMove(e); }}
-                            onPointerUp={(e) => { e.stopPropagation(); stopCornerResize(); }}
-                            onPointerLeave={(e) => { e.stopPropagation(); stopCornerResize(); }}
+                            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); startCornerResize(e); }}
+                            onPointerMove={(e) => { if (cornerResizing.current) { e.stopPropagation(); e.preventDefault(); cornerResizeMove(e); } }}
+                            onPointerUp={(e) => { e.stopPropagation(); e.preventDefault(); stopCornerResize(); }}
+                            onPointerCancel={(e) => { e.stopPropagation(); e.preventDefault(); stopCornerResize(); }}
                             className="absolute -left-1 -bottom-1 size-4 cursor-nesw-resize rounded-full border-2 border-white bg-[hsl(var(--primary))] shadow"
                             title="Drag corner to resize"
+                            style={{ touchAction: 'none' }}
                           />
                           <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-md bg-[hsl(var(--card))] border border-[hsl(var(--border))] px-1 py-0.5 shadow">
                             <button type="button" className="px-1 text-xs" onClick={(e) => { e.stopPropagation(); const w = Math.max(5, Math.min(80, (sign?.widthPct ?? 20) - 2)); const ns={ pageIndex:docPageIndex, xPct:sign?.xPct??signPos.x, yPct:sign?.yPct??signPos.y, widthPct:w }; setSign(ns); setSignPos({x:ns.xPct,y:ns.yPct}); setSignScaleX(w/20); setSignScaleY(w/20); }}>-</button>
