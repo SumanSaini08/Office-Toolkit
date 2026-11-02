@@ -307,6 +307,10 @@ export function ESignatureMaker() {
     setSignScaleY(Math.max(0.2, Math.min(3.5, cornerStart.current.scaleY + dy / 60)));
   };
 
+  const stopCornerResize = () => {
+    cornerResizing.current = false;
+  };
+
   const startSignDrag = (e: React.PointerEvent) => {
     if (!signatureData || !docWrapRef.current) return;
     e.stopPropagation();
