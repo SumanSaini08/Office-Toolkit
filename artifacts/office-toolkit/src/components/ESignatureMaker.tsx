@@ -242,17 +242,15 @@ export function ESignatureMaker() {
   const [docError, setDocError] = useState('');
   const [docLink, setDocLink] = useState('');
   const [docLinkError, setDocLinkError] = useState('');
-  const [sign, setSign] = useState<{ pageIndex: number; xPct: number; yPct: number; widthPct: number } | null>(null);
-  const [signPos, setSignPos] = useState({ x: 25, y: 75 });
-  const [signScaleX, setSignScaleX] = useState(0.23);
-  const [signScaleY, setSignScaleY] = useState(0.23);
+  const [signPos, setSignPos] = useState({ x: 20, y: 30 });
+  const [signScaleX, setSignScaleX] = useState(1);
+  const [signScaleY, setSignScaleY] = useState(1);
   const [signatureData, setSignatureData] = useState('');
   const [docIsPdf, setDocIsPdf] = useState(false);
   const [docPages, setDocPages] = useState<string[]>([]);
   const [docPageIndex, setDocPageIndex] = useState(0);
   const [docPageCount, setDocPageCount] = useState(1);
   const [docLoading, setDocLoading] = useState(false);
-  const [sigSelected, setSigSelected] = useState(false);
   const pdfPagesRef = useRef<HTMLCanvasElement[]>([]);
   const docWrapRef = useRef<HTMLDivElement>(null);
   const positioning = useRef(false);
@@ -295,59 +293,39 @@ export function ESignatureMaker() {
   }, []);
 
   const startCornerResize = (e: PointerEvent<HTMLDivElement>) => {
-    if (!signatureData) return;
     e.stopPropagation();
-    e.preventDefault();
     cornerResizing.current = true;
-    cornerStart.current = { x: e.clientX, y: e.clientY, scaleX: (sign?.widthPct ?? 20), scaleY: (sign?.widthPct ?? 20) };
+    cornerStart.current = { x: e.clientX, y: e.clientY, scaleX: signScaleX, scaleY: signScaleY };
     (e.currentTarget).setPointerCapture(e.pointerId);
   };
 
   const cornerResizeMove = (e: PointerEvent<HTMLDivElement>) => {
-    if (!cornerResizing.current || !docWrapRef.current) return;
-    e.stopPropagation();
-    e.preventDefault();
-    const rect = docWrapRef.current.getBoundingClientRect();
-    if (rect.width === 0) return;
+    if (!cornerResizing.current) return;
     const dx = e.clientX - cornerStart.current.x;
-    const deltaPct = (dx / rect.width) * 100;
-    let w = Math.max(5, Math.min(80, cornerStart.current.scaleX + deltaPct));
-    w = Math.round(w * 10) / 10;
-    const ns = { pageIndex: docPageIndex, xPct: sign?.xPct ?? signPos.x, yPct: sign?.yPct ?? signPos.y, widthPct: w };
-    setSign(ns);
-    setSignPos({ x: ns.xPct, y: ns.yPct });
-    setSignScaleX(w / 20);
-    setSignScaleY(w / 20);
+    const dy = e.clientY - cornerStart.current.y;
+    setSignScaleX(Math.max(0.2, Math.min(3.5, cornerStart.current.scaleX + dx / 60)));
+    setSignScaleY(Math.max(0.2, Math.min(3.5, cornerStart.current.scaleY + dy / 60)));
   };
 
   const startSignDrag = (e: React.PointerEvent) => {
     if (!signatureData || !docWrapRef.current) return;
     e.stopPropagation();
-    e.preventDefault();
     signDragging.current = true;
     signMoved.current = false;
-    const sx = sign?.xPct ?? signPos.x;
-    const sy = sign?.yPct ?? signPos.y;
-    signDragStart.current = { x: e.clientX, y: e.clientY, posX: sx, posY: sy };
-    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch {}
+    signDragStart.current = { x: e.clientX, y: e.clientY, posX: signPos.x, posY: signPos.y };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const onSignDragMove = (e: React.PointerEvent) => {
     if (!signDragging.current || !docWrapRef.current) return;
-    e.stopPropagation();
-    e.preventDefault();
     const rect = docWrapRef.current.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
     const dx = e.clientX - signDragStart.current.x;
     const dy = e.clientY - signDragStart.current.y;
-    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) signMoved.current = true;
-    const sw = (sign?.widthPct ?? 20);
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) signMoved.current = true;
     const nx = signDragStart.current.posX + (dx / rect.width) * 100;
     const ny = signDragStart.current.posY + (dy / rect.height) * 100;
-    const clampedX = Math.max(sw / 2, Math.min(100 - sw / 2, nx));
-    const clampedY = Math.max(sw / 4, Math.min(100 - sw / 4, ny));
-    setSignPos({ x: clampedX, y: clampedY });
-    setSign({ pageIndex: docPageIndex, xPct: clampedX, yPct: clampedY, widthPct: sw });
+    setSignPos({ x: Math.max(0, Math.min(100, nx)), y: Math.max(0, Math.min(100, ny)) });
   };
 
   const stopSignDrag = () => {
@@ -360,19 +338,12 @@ export function ESignatureMaker() {
     const rect = docWrapRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
-    const sw = sign?.widthPct ?? 20;
-    const clampedX = Math.max(sw / 2, Math.min(100 - sw / 2, x));
-    const clampedY = Math.max(sw / 4, Math.min(100 - sw / 4, y));
-    setSignPos({ x: clampedX, y: clampedY });
-    setSign({ pageIndex: docPageIndex, xPct: clampedX, yPct: clampedY, widthPct: sw });
-    setSigSelected(true);
+    setSignPos({ x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) });
   };
 
   const applyComposerDraw = () => {
     const source = composerDrawRef.current;
-    if (source)                     setSignatureData(cropCanvasInk(source).toDataURL('image/png'));
-                    setSign(null);
-                    setSigSelected(false);
+    if (source) setSignatureData(cropCanvasInk(source).toDataURL('image/png'));
   };
 
   const applyComposerType = () => {
@@ -385,26 +356,21 @@ export function ESignatureMaker() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(name || 'Your name', 600, 215);
-                    setSignatureData(cropCanvasInk(canvas).toDataURL('image/png'));
-                    setSign(null);
-                    setSigSelected(false);
+    setSignatureData(cropCanvasInk(canvas).toDataURL('image/png'));
   };
 
   const applyComposerUpload = () => {
-                  if (composerUpload) { setSignatureData(composerUpload); setSign(null); setSigSelected(false); }
+    if (composerUpload) setSignatureData(composerUpload);
   };
 
-      if (signatureData) {
-        const next = { pageIndex: docPageIndex, xPct: 75, yPct: 75, widthPct: 22 };
-        setSign(next);
-        setSignPos({ x: next.xPct, y: next.yPct });
-        setSignScaleX(next.widthPct / 20);
-        setSignScaleY(next.widthPct / 20);
-        setSigSelected(true);
-      } else { setSign(null); setSigSelected(false); }
-    };
-    ensure();
-  }, [signatureData]);
+  useEffect(() => {
+    if (sigTab === 'draw') {
+      if (composerDrawRef.current) recolorCanvasInk(composerDrawRef.current, color);
+      if (signatureData) recolorDataUrl(signatureData, color).then(setSignatureData);
+      return;
+    }
+    if (sigTab === 'type' && signatureData) applyComposerType();
+  }, [color]);
 
   const pickComposerUpload = (file?: File) => {
     if (!file) return;
@@ -530,13 +496,12 @@ export function ESignatureMaker() {
     const stampOnPage = (ctx: CanvasRenderingContext2D, pageWidth: number, pageHeight: number) => {
       const wrap = docWrapRef.current;
       const wrapWidth = wrap?.getBoundingClientRect().width || pageWidth;
-      const s = sign;
-      const widthPct = s?.widthPct ?? 20;
-      const previewWidthPct = widthPct;
-      const sigW = (pageWidth * previewWidthPct) / 100;
-      const sigH = sigImage.height * (sigW / sigImage.width || 1);
-      const posX = ((s?.xPct ?? signPos.x) * pageWidth) / 100;
-      const posY = ((s?.yPct ?? signPos.y) * pageHeight) / 100;
+      const previewWidth = 200 * signScaleX;
+      const scale = pageWidth / wrapWidth;
+      const sigW = previewWidth * scale;
+      const sigH = sigImage.height * (sigW / sigImage.width);
+      const posX = (pageWidth * signPos.x) / 100;
+      const posY = (pageHeight * signPos.y) / 100;
       const padX = Math.max(0, Math.min(posX - sigW / 2, pageWidth - sigW));
       const padY = Math.max(0, Math.min(posY - sigH / 2, pageHeight - sigH));
       ctx.drawImage(sigImage, padX, padY, sigW, sigH);
@@ -654,7 +619,6 @@ export function ESignatureMaker() {
                   <Button onClick={sigTab === 'draw' ? applyComposerDraw : sigTab === 'type' ? applyComposerType : applyComposerUpload} className="mt-4 w-full" testId="button-doc-signature-apply"><Check size={15} /> {signatureData ? 'Update signature' : 'Create signature'}</Button>
                   {signatureData && <div className="mt-3 flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3"><img src={signatureData} alt="Your signature made in the free e-signature online tool" className="h-10 w-auto object-contain" data-testid="img-doc-signature-preview" /><span className="text-xs font-bold text-[hsl(var(--primary))]">Ready — drag it onto the page</span></div>}
                 </div>
-                </div>
                 <div>
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <span className="max-w-[50%] truncate text-xs font-bold text-[hsl(var(--muted-foreground))]">{docName || 'document'}</span>
@@ -667,60 +631,38 @@ export function ESignatureMaker() {
                     <div
                       ref={docWrapRef}
                       className="relative mx-auto w-full max-w-[560px] select-none"
-                      style={{ touchAction: 'pan-y pinch-zoom' }}
-                      onPointerDown={(e) => {
-                        if (!signatureData) { positioning.current = true; try { (e.currentTarget).setPointerCapture(e.pointerId); } catch {} return; }
-                        placeSignOnClick(e);
-                        setSigSelected(false);
-                      }}
+                      onPointerDown={placeSignOnClick}
                       onPointerMove={signDocPosition}
                       onPointerUp={() => { positioning.current = false; }}
                       onPointerLeave={() => { positioning.current = false; }}
                     >
                       <img src={docData} alt="Your uploaded document being signed" className="w-full rounded-md" data-testid="img-document" />
-                      {signatureData && <div
-                        className="absolute"
-                        style={{ left: `${sign?.xPct ?? signPos.x}%`, top: `${sign?.yPct ?? signPos.y}%`, width: `${(sign?.widthPct ?? 20)}%`, maxWidth: '80%', transform: 'translate(-50%, -50%)', touchAction: 'none' }}
-                        data-testid="sign-overlay"
-                        onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); setSigSelected(true); startSignDrag(e); }}
-                        onPointerMove={(e) => { if (signDragging.current) { onSignDragMove(e); } }}
-                        onPointerUp={(e) => { e.stopPropagation(); stopSignDrag(); }}
-                        onPointerCancel={(e) => { e.stopPropagation(); stopSignDrag(); }}
-                      >
+                      {signatureData && <div className="absolute flex flex-col items-center" style={{ left: `${signPos.x}%`, top: `${signPos.y}%`, width: `${200 * signScaleX}px`, transform: 'translate(-50%, -50%)', touchAction: 'none' }} data-testid="sign-overlay">
+                        <div
+                          className="absolute -left-2 -top-2 z-10 grid size-6 cursor-grab place-items-center rounded-full border-2 border-white bg-[hsl(var(--muted-foreground))] text-white shadow active:cursor-grabbing"
+                          title="Drag to move"
+                          data-testid="handle-doc-move"
+                        ><Move size={12} /></div>
                         <img
                           src={signatureData}
                           alt="Your signature placed on the document"
-                          className={`w-full drop-shadow-sm ${sigSelected ? 'outline outline-2 outline-[hsl(var(--primary))] outline-offset-1' : ''}`}
+                          className="w-full drop-shadow-sm cursor-grab active:cursor-grabbing"
                           data-testid="img-doc-sign-placed"
-                          style={{ touchAction: 'none', cursor: signDragging.current ? 'grabbing' : 'grab', pointerEvents: 'auto', userSelect: 'none' }}
-                          draggable={false}
+                          style={{ touchAction: 'none' }}
+                          onPointerDown={startSignDrag}
+                          onPointerMove={onSignDragMove}
+                          onPointerUp={stopSignDrag}
+                          onPointerCancel={stopSignDrag}
                         />
-                        {sigSelected && <>
-                          <div
-                            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); startCornerResize(e); }}
-                            onPointerMove={(e) => { if (cornerResizing.current) { e.stopPropagation(); e.preventDefault(); cornerResizeMove(e); } }}
-                            onPointerUp={(e) => { e.stopPropagation(); e.preventDefault(); stopCornerResize(); }}
-                            onPointerCancel={(e) => { e.stopPropagation(); e.preventDefault(); stopCornerResize(); }}
-                            className="absolute -right-1 -bottom-1 size-4 cursor-nwse-resize rounded-full border-2 border-white bg-[hsl(var(--primary))] shadow"
-                            title="Drag corner to resize"
-                            data-testid="handle-doc-resize"
-                            style={{ touchAction: 'none' }}
-                          />
-                          <div
-                            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); startCornerResize(e); }}
-                            onPointerMove={(e) => { if (cornerResizing.current) { e.stopPropagation(); e.preventDefault(); cornerResizeMove(e); } }}
-                            onPointerUp={(e) => { e.stopPropagation(); e.preventDefault(); stopCornerResize(); }}
-                            onPointerCancel={(e) => { e.stopPropagation(); e.preventDefault(); stopCornerResize(); }}
-                            className="absolute -left-1 -bottom-1 size-4 cursor-nesw-resize rounded-full border-2 border-white bg-[hsl(var(--primary))] shadow"
-                            title="Drag corner to resize"
-                            style={{ touchAction: 'none' }}
-                          />
-                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-md bg-[hsl(var(--card))] border border-[hsl(var(--border))] px-1 py-0.5 shadow">
-                            <button type="button" className="px-1 text-xs" onClick={(e) => { e.stopPropagation(); const w = Math.max(5, Math.min(80, (sign?.widthPct ?? 20) - 2)); const ns={ pageIndex:docPageIndex, xPct:sign?.xPct??signPos.x, yPct:sign?.yPct??signPos.y, widthPct:w }; setSign(ns); setSignPos({x:ns.xPct,y:ns.yPct}); setSignScaleX(w/20); setSignScaleY(w/20); }}>-</button>
-                            <button type="button" className="px-1 text-xs" onClick={(e) => { e.stopPropagation(); const w = Math.max(5, Math.min(80, (sign?.widthPct ?? 20) + 2)); const ns={ pageIndex:docPageIndex, xPct:sign?.xPct??signPos.x, yPct:sign?.yPct??signPos.y, widthPct:w }; setSign(ns); setSignPos({x:ns.xPct,y:ns.yPct}); setSignScaleX(w/20); setSignScaleY(w/20); }}>+</button>
-                            <button type="button" className="px-1 text-xs" onClick={(e) => { e.stopPropagation(); setSignatureData(''); setSign(null); setSigSelected(false); }}>x</button>
-                          </div>
-                        </>}
+                        <div
+                          onPointerDown={(e) => { e.stopPropagation(); startCornerResize(e); }}
+                          onPointerMove={(e) => { e.stopPropagation(); cornerResizeMove(e); }}
+                          onPointerUp={(e) => { e.stopPropagation(); stopCornerResize(); }}
+                          onPointerLeave={(e) => { e.stopPropagation(); stopCornerResize(); }}
+                          className="absolute -right-2 -bottom-2 size-5 cursor-nwse-resize rounded-full border-2 border-white bg-[hsl(var(--primary))] shadow"
+                          title="Drag corner to resize"
+                          data-testid="handle-doc-resize"
+                        />
                       </div>}
                     </div>
                   </div>
@@ -731,10 +673,10 @@ export function ESignatureMaker() {
                   </div>}
                   {docIsPdf && <div className="mt-2 text-center text-xs text-[hsl(var(--muted-foreground))]">Your signature is added to the page shown here. When you download as PDF, every page is kept and the signature is stamped on this page.</div>}
                   {signatureData && <div className="mt-3 space-y-3 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/.3)] p-4">
-                    <label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Signature size</span><input type="range" min={5} max={80} value={Math.round((sign?.widthPct ?? 20))} onChange={(e) => { const w = Number(e.target.value); const ns={ pageIndex:docPageIndex, xPct:sign?.xPct??signPos.x, yPct:sign?.yPct??signPos.y, widthPct:w }; setSign(ns); setSignPos({x:ns.xPct,y:ns.yPct}); setSignScaleX(w/20); setSignScaleY(w/20); }} className="w-full" data-testid="input-sign-size-x" /></label>
+                    <SizeControl label="Signature size" value={Math.round(200 * signScaleX)} onChange={(v) => setSignScaleX(v / 200)} testId="input-sign-size-x" />
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Position left</span><input type="range" min={0} max={100} value={Math.round(sign?.xPct ?? signPos.x)} onChange={(e) => { const x = Number(e.target.value); const ns={ pageIndex:docPageIndex, xPct:x, yPct:sign?.yPct??signPos.y, widthPct:sign?.widthPct??20 }; setSign(ns); setSignPos({x,y}); }} className="w-full" data-testid="input-sign-pos-x" /></label>
-                      <label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Position top</span><input type="range" min={0} max={100} value={Math.round(sign?.yPct ?? signPos.y)} onChange={(e) => { const y = Number(e.target.value); const ns={ pageIndex:docPageIndex, xPct:sign?.xPct??signPos.x, yPct:y, widthPct:sign?.widthPct??20 }; setSign(ns); setSignPos({x:ns.xPct,y}); }} className="w-full" data-testid="input-sign-pos-y" /></label>
+                      <label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Position left</span><input type="range" min={0} max={100} value={Math.round(signPos.x)} onChange={(e) => setSignPos((p) => ({ ...p, x: Number(e.target.value) }))} className="w-full" data-testid="input-sign-pos-x" /></label>
+                      <label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Position top</span><input type="range" min={0} max={100} value={Math.round(signPos.y)} onChange={(e) => setSignPos((p) => ({ ...p, y: Number(e.target.value) }))} className="w-full" data-testid="input-sign-pos-y" /></label>
                     </div>
                     <p className="text-xs leading-5 text-[hsl(var(--muted-foreground))]">Drag anywhere on the page to position your signature, or use the sliders above to fine-tune size and position.</p>
                   </div>}
