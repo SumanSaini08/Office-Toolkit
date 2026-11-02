@@ -370,9 +370,11 @@ export function ESignatureMaker() {
 
   const applyComposerDraw = () => {
     const source = composerDrawRef.current;
-    if (source)                     setSignatureData(cropCanvasInk(source).toDataURL('image/png'));
-                    setSign(null);
-                    setSigSelected(false);
+    if (source) {
+      setSignatureData(cropCanvasInk(source).toDataURL('image/png'));
+      setSign(null);
+      setSigSelected(false);
+    }
   };
 
   const applyComposerType = () => {
@@ -385,9 +387,9 @@ export function ESignatureMaker() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(name || 'Your name', 600, 215);
-                    setSignatureData(cropCanvasInk(canvas).toDataURL('image/png'));
-                    setSign(null);
-                    setSigSelected(false);
+    setSignatureData(cropCanvasInk(canvas).toDataURL('image/png'));
+    setSign(null);
+    setSigSelected(false);
   };
 
   const applyComposerUpload = () => {
