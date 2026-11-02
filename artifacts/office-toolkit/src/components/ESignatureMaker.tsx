@@ -370,11 +370,9 @@ export function ESignatureMaker() {
 
   const applyComposerDraw = () => {
     const source = composerDrawRef.current;
-    if (source) {
-      setSignatureData(cropCanvasInk(source).toDataURL('image/png'));
-      setSign(null);
-      setSigSelected(false);
-    }
+    if (source)                     setSignatureData(cropCanvasInk(source).toDataURL('image/png'));
+                    setSign(null);
+                    setSigSelected(false);
   };
 
   const applyComposerType = () => {
@@ -387,30 +385,25 @@ export function ESignatureMaker() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(name || 'Your name', 600, 215);
-    setSignatureData(cropCanvasInk(canvas).toDataURL('image/png'));
-    setSign(null);
-    setSigSelected(false);
+                    setSignatureData(cropCanvasInk(canvas).toDataURL('image/png'));
+                    setSign(null);
+                    setSigSelected(false);
   };
 
   const applyComposerUpload = () => {
-    if (composerUpload) { setSignatureData(composerUpload); setSign(null); setSigSelected(false); }
+                  if (composerUpload) { setSignatureData(composerUpload); setSign(null); setSigSelected(false); }
   };
 
-  useEffect(() => {
-    if (!signatureData) {
-      setSign(null);
-      setSigSelected(false);
-      return;
-    }
-    setSign((prev) => {
-      if (prev && typeof prev.widthPct === 'number' && typeof prev.xPct === 'number') return prev;
-      const next = { pageIndex: docPageIndex, xPct: 75, yPct: 75, widthPct: 22 };
-      setSignPos({ x: next.xPct, y: next.yPct });
-      setSignScaleX(next.widthPct / 20);
-      setSignScaleY(next.widthPct / 20);
-      setSigSelected(true);
-      return next;
-    });
+      if (signatureData) {
+        const next = { pageIndex: docPageIndex, xPct: 75, yPct: 75, widthPct: 22 };
+        setSign(next);
+        setSignPos({ x: next.xPct, y: next.yPct });
+        setSignScaleX(next.widthPct / 20);
+        setSignScaleY(next.widthPct / 20);
+        setSigSelected(true);
+      } else { setSign(null); setSigSelected(false); }
+    };
+    ensure();
   }, [signatureData]);
 
   const pickComposerUpload = (file?: File) => {
