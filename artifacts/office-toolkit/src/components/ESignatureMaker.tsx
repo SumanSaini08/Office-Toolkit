@@ -391,19 +391,24 @@ export function ESignatureMaker() {
   };
 
   const applyComposerUpload = () => {
-                  if (composerUpload) { setSignatureData(composerUpload); setSign(null); setSigSelected(false); }
+    if (composerUpload) { setSignatureData(composerUpload); setSign(null); setSigSelected(false); }
   };
 
-      if (signatureData) {
-        const next = { pageIndex: docPageIndex, xPct: 75, yPct: 75, widthPct: 22 };
-        setSign(next);
-        setSignPos({ x: next.xPct, y: next.yPct });
-        setSignScaleX(next.widthPct / 20);
-        setSignScaleY(next.widthPct / 20);
-        setSigSelected(true);
-      } else { setSign(null); setSigSelected(false); }
-    };
-    ensure();
+  useEffect(() => {
+    if (!signatureData) {
+      setSign(null);
+      setSigSelected(false);
+      return;
+    }
+    setSign((prev) => {
+      if (prev && typeof prev.widthPct === 'number' && typeof prev.xPct === 'number') return prev;
+      const next = { pageIndex: docPageIndex, xPct: 75, yPct: 75, widthPct: 22 };
+      setSignPos({ x: next.xPct, y: next.yPct });
+      setSignScaleX(next.widthPct / 20);
+      setSignScaleY(next.widthPct / 20);
+      setSigSelected(true);
+      return next;
+    });
   }, [signatureData]);
 
   const pickComposerUpload = (file?: File) => {
