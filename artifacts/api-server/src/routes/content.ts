@@ -155,9 +155,13 @@ function isAdmin(request: { headers: { cookie?: string } }) {
 
 function passwordsMatch(configured: string | undefined, input: unknown) {
   if (typeof input !== "string" || !configured) return false;
-  const inputHash = createHash("sha256").update(input).digest();
-  const configuredHash = createHash("sha256").update(configured).digest();
-  return timingSafeEqual(inputHash, configuredHash);
+  try {
+    const inputHash = createHash("sha256").update(input).digest();
+    const configuredHash = createHash("sha256").update(configured).digest();
+    return timingSafeEqual(inputHash, configuredHash);
+  } catch {
+    return false;
+  }
 }
 
 async function readStoredPassword(): Promise<string | undefined> {
