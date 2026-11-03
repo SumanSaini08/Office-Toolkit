@@ -234,6 +234,19 @@
         "metaTitle": "E-signature Tips – Professional & Legible",
         "metaDescription": "A professional e-signature needs to be legible, consistent and easy to place. Simple tips to draw, type and export digital signatures that look clean on."
       }
+    },
+    {
+      "slug": "create-electronic-signature-online",
+      "title": "Create Electronic Signature Online Free",
+      "excerpt": "Create an electronic signature online for free. Draw, type, or upload your signature and use it on PDFs, contracts, and documents. No signup.",
+      "published": true,
+      "publishedAt": "2026-10-15",
+      "author": "Office Toolkit Team",
+      "imageUrl": "/og/e-signature.png",
+      "seo": {
+        "metaTitle": "Create Electronic Signature Online Free - Draw or Type",
+        "metaDescription": "Create an electronic signature online for free. Draw, type, or upload your signature and use it on PDFs, contracts, and documents. No signup."
+      }
     }
   ],
   "signatureTemplates": {
