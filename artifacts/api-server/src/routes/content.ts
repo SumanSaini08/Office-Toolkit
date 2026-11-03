@@ -174,8 +174,10 @@ async function readStoredPassword(): Promise<string | undefined> {
 }
 
 async function resolveAdminPassword(): Promise<string | undefined> {
+  const envPwd = process.env.ADMIN_PASSWORD;
+  if (envPwd) return envPwd;
   const stored = await readStoredPassword();
-  return stored || process.env.ADMIN_PASSWORD;
+  return stored;
 }
 
 async function storeAdminPassword(password: string) {
