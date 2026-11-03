@@ -297,7 +297,7 @@ export function ESignatureMaker() {
     signDragging.current = true;
     signMoved.current = false;
     signDragStart.current = { x: e.clientX, y: e.clientY, xPct: signature.xPct, yPct: signature.yPct };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    docWrapRef.current.setPointerCapture(e.pointerId);
   };
 
   const startResize = (e: React.PointerEvent) => {
@@ -306,7 +306,7 @@ export function ESignatureMaker() {
     e.preventDefault();
     resizeDragging.current = true;
     resizeStart.current = { x: e.clientX, widthPct: signature.widthPct, aspectRatio: 1 };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    docWrapRef.current?.setPointerCapture(e.pointerId);
   };
 
   const onResizeMove = (e: React.PointerEvent) => {
@@ -321,9 +321,9 @@ export function ESignatureMaker() {
   };
 
   const stopResize = (e?: React.PointerEvent) => {
-    if (e && (e.currentTarget as HTMLElement)?.releasePointerCapture) {
+    if (e && docWrapRef.current?.hasPointerCapture(e.pointerId)) {
       try {
-        (e.currentTarget as HTMLElement).releasePointerCapture((e as any).pointerId);
+        docWrapRef.current.releasePointerCapture(e.pointerId);
       } catch {}
     }
     resizeDragging.current = false;
@@ -345,9 +345,9 @@ export function ESignatureMaker() {
   };
 
   const stopSignDrag = (e?: React.PointerEvent) => {
-    if (e && (e.currentTarget as HTMLElement)?.releasePointerCapture) {
+    if (e && docWrapRef.current?.hasPointerCapture(e.pointerId)) {
       try {
-        (e.currentTarget as HTMLElement).releasePointerCapture((e as any).pointerId);
+        docWrapRef.current.releasePointerCapture(e.pointerId);
       } catch {}
     }
     signDragging.current = false;
@@ -673,10 +673,17 @@ export function ESignatureMaker() {
                       onPointerMove={(e: any) => {
                         if (resizeDragging.current) {
                           onResizeMove(e);
+                        } else if (signDragging.current) {
+                          onSignDragMove(e);
                         }
                       }}
                       onPointerUp={(e: any) => {
                         stopResize(e);
+                        stopSignDrag(e);
+                      }}
+                      onPointerCancel={(e: any) => {
+                        stopResize(e);
+                        stopSignDrag(e);
                       }}
                       onPointerLeave={(e: any) => {
                         stopResize(e);
@@ -688,18 +695,14 @@ export function ESignatureMaker() {
                            src={signatureData}
                            alt="Your signature placed on the document"
                            className="w-full drop-shadow-sm cursor-grab active:cursor-grabbing"
+                           draggable={false}
+                           onDragStart={(e: any) => e.preventDefault()}
                            data-testid="img-doc-sign-placed"
                            style={{ touchAction: 'none' }}
                            onPointerDown={(e: any) => { startSignDrag(e); }}
-                           onPointerMove={(e: any) => { (onSignDragMove as any)(e); }}
-                           onPointerUp={(e: any) => { (stopSignDrag as any)(e); }}
-                           onPointerCancel={(e: any) => { (stopSignDrag as any)(e); }}
                          />
                          <div
                            onPointerDown={(e: any) => startResize(e)}
-                           onPointerMove={(e: any) => onResizeMove(e)}
-                           onPointerUp={(e: any) => stopResize(e)}
-                           onPointerCancel={(e: any) => stopResize(e)}
                            className="absolute -right-2 -bottom-2 size-5 cursor-nwse-resize rounded-full border-2 border-white bg-[hsl(var(--primary))] shadow"
                            title="Drag corner to resize"
                            data-testid="handle-doc-resize"
