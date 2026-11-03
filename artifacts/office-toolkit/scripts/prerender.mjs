@@ -324,55 +324,160 @@ function generateStaticBody(route) {
   const faqs = generateFaq(path).mainEntity;
   const howToSteps = generateHowTo(path).step;
 
+  const allTools = [
+    { href: "/e-signature-maker", label: "Free E-Signature Maker" },
+    { href: "/tools/esignature-for-pdf", label: "Sign PDF Online" },
+    { href: "/tools/esignature-for-word", label: "Sign Word Document" },
+    { href: "/tools/esignature-for-excel", label: "Sign Excel Online" },
+    { href: "/tools/esignature-for-contracts", label: "Sign Contracts Online" },
+    { href: "/tools/esignature-for-offer-letter", label: "Sign Offer Letter Online" },
+    { href: "/invoice-generator", label: "Free Invoice Generator" },
+    { href: "/tools/gst-invoice-generator", label: "GST Invoice Generator" },
+    { href: "/tools/invoice-format-excel", label: "Invoice Format Excel" },
+    { href: "/tools/invoice-format-word", label: "Invoice Format Word" },
+    { href: "/tools/invoice-for-freelancers", label: "Freelancer Invoice Generator" },
+    { href: "/tools/quotation-format", label: "Quotation Format" },
+  ];
+
+  const blogLinks = [
+    { href: "/blog/small-businesses-lose-money-late-invoices", label: "Why Small Businesses Lose Money on Late Invoices" },
+    { href: "/blog/situations-where-esignature-saves-time", label: "5 Situations Where E-Signatures Save Time" },
+    { href: "/blog/how-e-signatures-simplify-invoice-management-and-business-payments", label: "How E-Signatures Simplify Invoice Management" },
+    { href: "/blog/getting-paid-faster", label: "A Better Invoice Gets You Paid Faster" },
+    { href: "/blog/create-electronic-signature-online", label: "Create Electronic Signature Online" },
+  ];
+
   if (path === "/") {
     return `
-      <h1>Free Digital Signature & Invoice Maker Online</h1>
-      <p>Create a free online signature and make professional PDF invoices in seconds. No signup, no uploads, works right in your browser.</p>
+      <header><nav><a href="/">Home</a> | <a href="/e-signature-maker">E-Signature Maker</a> | <a href="/invoice-generator">Invoice Generator</a> | <a href="/tools">All Tools</a> | <a href="/blog">Blog</a> | <a href="/contact">Contact</a></nav></header>
+      <h1>Free Digital Signature &amp; Invoice Maker Online</h1>
+      <p>Create a free online signature and make professional PDF invoices in seconds. No signup, no uploads, works right in your browser. Sign contracts, offer letters, PDFs, Word and Excel files or generate clean invoices instantly.</p>
+      <h2>Popular Tools</h2>
+      <ul>
+        <li><a href="/e-signature-maker">Free Online Signature Maker</a> - Draw, type, or upload your signature</li>
+        <li><a href="/invoice-generator">Free Invoice Generator</a> - Create professional PDF invoices</li>
+        <li><a href="/tools/esignature-for-contracts">Sign Contracts Online</a> - Electronic signatures for agreements</li>
+        <li><a href="/tools/esignature-for-offer-letter">Sign Offer Letters</a> - Fast HR document signing</li>
+        <li><a href="/tools/esignature-for-excel">Sign Excel Files</a> - E-sign spreadsheets</li>
+      </ul>
       <h2>How it works</h2>
       <ol>
-        <li>Open the e-signature maker or invoice generator</li>
-        <li>Follow the simple on-screen steps</li>
-        <li>Download your signed PDF or invoice instantly</li>
+        <li>Choose your tool - <a href="/e-signature-maker">e-signature maker</a> or <a href="/invoice-generator">invoice generator</a></li>
+        <li>Create your signature or fill invoice details</li>
+        <li>Place and download as PDF, PNG, or JPG instantly</li>
       </ol>
       <h2>Key features</h2>
       <ul>${features.map(f => `<li>${f}</li>`).join("")}</ul>
+      <h2>From our Blog</h2>
+      <ul>${blogLinks.map(b => `<li><a href="${b.href}">${b.label}</a></li>`).join("")}</ul>
       <h2>FAQ</h2>
       <dl>${faqs.slice(0, 4).map(f => `<dt>${f.name}</dt><dd>${f.acceptedAnswer.text}</dd>`).join("")}</dl>
+      <footer><nav><a href="/">Home</a> | <a href="/tools">Tools</a> | <a href="/blog">Blog</a> | <a href="/about">About</a> | <a href="/contact">Contact</a> | <a href="/privacy">Privacy</a></nav></footer>
     `.trim();
   }
 
   if (path === "/blog") {
     return `
-      <h1>Blog & Guides on E-Signatures and Invoices</h1>
+      <header><nav><a href="/">Home</a> | <a href="/e-signature-maker">E-Signature</a> | <a href="/invoice-generator">Invoice</a> | <a href="/tools">Tools</a> | <a href="/blog">Blog</a></nav></header>
+      <h1>Blog &amp; Guides on E-Signatures and Invoices</h1>
       <p>Practical, ad-free guides on e-signatures, invoices, GST and getting paid faster — plus resume tips. Free to read, no signup.</p>
-      <h2>Latest articles</h2>
-      <p>Browse our collection of practical guides written by the Office Toolkit team.</p>
+      <h2>Latest Articles</h2>
+      <ul>
+        <li><a href="/blog/small-businesses-lose-money-late-invoices">Why Small Businesses Lose Money Waiting on Late Invoices</a> - Learn how late payments impact cash flow and how to fix it.</li>
+        <li><a href="/blog/situations-where-esignature-saves-time">5 Situations Where an E-Signature Saves You Real Time</a> - Real scenarios where digital signatures save hours.</li>
+        <li><a href="/blog/how-e-signatures-simplify-invoice-management-and-business-payments">How E-Signatures Simplify Invoice Management and Business Payments</a> - Speed up approvals and get paid faster.</li>
+        <li><a href="/blog/getting-paid-faster">A better invoice is a better handoff</a> - Tips to improve your invoicing workflow.</li>
+        <li><a href="/blog/create-electronic-signature-online">Create Electronic Signature Online</a> - Step by step guide to making e-signatures.</li>
+      </ul>
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/e-signature-maker">Free E-Signature Maker</a></li>
+        <li><a href="/invoice-generator">Free Invoice Generator</a></li>
+        <li><a href="/tools/esignature-for-contracts">Sign Contracts Online</a></li>
+      </ul>
       <h2>FAQ</h2>
       <dl>
-        <dt>Are the guides free?</dt><dd>Yes, all articles are free to read with no signup.</dt>
-        <dt>Who writes these guides?</dt><dd>The Office Toolkit team, based on real user questions.</dt>
+        <dt>Are the guides free?</dt><dd>Yes, all articles are free to read with no signup.</dd>
+        <dt>Who writes these guides?</dt><dd>The Office Toolkit team, based on real user questions.</dd>
+        <dt>Can I use the tools mentioned?</dt><dd>Yes, all tools are free and run entirely in your browser.</dd>
       </dl>
+      <footer><nav><a href="/">Home</a> | <a href="/tools">Tools</a> | <a href="/blog">Blog</a> | <a href="/about">About</a> | <a href="/contact">Contact</a> | <a href="/privacy">Privacy</a></nav></footer>
     `.trim();
   }
 
   if (["/about", "/contact", "/privacy"].includes(path)) {
     return `
+      <header><nav><a href="/">Home</a> | <a href="/e-signature-maker">E-Signature</a> | <a href="/invoice-generator">Invoice</a> | <a href="/tools">Tools</a> | <a href="/blog">Blog</a> | <a href="/contact">Contact</a></nav></header>
       <h1>${escapeHtml(title)}</h1>
       <p>${escapeHtml(description)}</p>
+      <h2>Quick Links</h2>
+      <ul>
+        <li><a href="/e-signature-maker">Free E-Signature Maker</a></li>
+        <li><a href="/invoice-generator">Free Invoice Generator</a></li>
+        <li><a href="/tools">All Tools</a></li>
+        <li><a href="/blog">Blog</a></li>
+      </ul>
       <h2>What you&apos;ll find here</h2>
       <ul>${features.map(f => `<li>${f}</li>`).join("")}</ul>
+      <footer><nav><a href="/">Home</a> | <a href="/tools">Tools</a> | <a href="/blog">Blog</a> | <a href="/about">About</a> | <a href="/contact">Contact</a> | <a href="/privacy">Privacy</a></nav></footer>
+    `.trim();
+  }
+
+  if (path.startsWith("/blog/")) {
+    const relatedTools = [
+      { href: "/e-signature-maker", label: "Free E-Signature Maker" },
+      { href: "/invoice-generator", label: "Free Invoice Generator" },
+      { href: "/tools/esignature-for-contracts", label: "Sign Contracts Online" },
+    ];
+    const relatedPosts = [
+      { href: "/blog/situations-where-esignature-saves-time", label: "5 Situations Where E-Signatures Save Time" },
+      { href: "/blog/how-e-signatures-simplify-invoice-management-and-business-payments", label: "How E-Signatures Simplify Invoice Management" },
+      { href: "/blog/small-businesses-lose-money-late-invoices", label: "Why Small Businesses Lose Money on Late Invoices" },
+      { href: "/blog/create-electronic-signature-online", label: "Create Electronic Signature Online" },
+    ];
+    return `
+      <header><nav><a href="/">Home</a> | <a href="/blog">Blog</a> | <a href="/e-signature-maker">E-Signature</a> | <a href="/invoice-generator">Invoice</a></nav></header>
+      <h1>${escapeHtml(title)}</h1>
+      <p>${escapeHtml(description)}</p>
+      <article>
+        <p>This guide provides practical insights on e-signatures, invoices, and getting paid faster. Learn actionable steps you can apply to your business today.</p>
+        <h2>Key Takeaways</h2>
+        <ul>
+          <li>Save time with digital signatures and streamlined workflows</li>
+          <li>Improve cash flow with professional, timely invoices</li>
+          <li>Keep your documents secure with local-first tools</li>
+        </ul>
+        <h2>How Office Toolkit Helps</h2>
+        <p>Use our free tools to put these ideas into practice - no signup required, everything runs in your browser.</p>
+        <ul>
+          <li><a href="/e-signature-maker">Create and place e-signatures</a> in seconds</li>
+          <li><a href="/invoice-generator">Generate professional invoices</a> with tax support</li>
+          <li><a href="/tools/esignature-for-contracts">Sign contracts online</a> quickly and securely</li>
+        </ul>
+      </article>
+      <h2>Related Tools</h2>
+      <ul>${relatedTools.map(t => `<li><a href="${t.href}">${t.label}</a></li>`).join("")}</ul>
+      <h2>Related Articles</h2>
+      <ul>${relatedPosts.map(p => `<li><a href="${p.href}">${p.label}</a></li>`).join("")}</ul>
+      <footer><nav><a href="/">Home</a> | <a href="/tools">Tools</a> | <a href="/blog">Blog</a> | <a href="/about">About</a> | <a href="/contact">Contact</a> | <a href="/privacy">Privacy</a></nav></footer>
     `.trim();
   }
 
   return `
+    <header><nav><a href="/">Home</a> | <a href="/tools">Tools</a> | <a href="/e-signature-maker">E-Signature</a> | <a href="/invoice-generator">Invoice</a> | <a href="/blog">Blog</a> | <a href="/contact">Contact</a></nav></header>
     <h1>${escapeHtml(title)}</h1>
     <p>${escapeHtml(description)}</p>
     <h2>How it works</h2>
     <ol>${howToSteps.map(s => `<li>${escapeHtml(s.text)}</li>`).join("")}</ol>
     <h2>Key features</h2>
-    <ul>${features.map(f => `<li>${escapeHtml(f)}</li>`).join("")}</ul>
+    <ul>${features.map(f => `<li>${f}</li>`).join("")}</ul>
+    <h2>Related Tools</h2>
+    <ul>${allTools.filter((_,i)=>i<6).map(t => `<li><a href="${t.href}">${t.label}</a></li>`).join("")}</ul>
+    <h2>Learn More</h2>
+    <ul>${blogLinks.slice(0,3).map(b => `<li><a href="${b.href}">${b.label}</a></li>`).join("")}</ul>
     <h2>FAQ</h2>
     <dl>${faqs.slice(0, 5).map(f => `<dt>${escapeHtml(f.name)}</dt><dd>${escapeHtml(f.acceptedAnswer.text)}</dd>`).join("")}</dl>
+    <footer><nav><a href="/">Home</a> | <a href="/tools">Tools</a> | <a href="/blog">Blog</a> | <a href="/about">About</a> | <a href="/contact">Contact</a> | <a href="/privacy">Privacy</a></nav></footer>
   `.trim();
 }
 
